@@ -266,18 +266,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    function onRatesLoaded(data, isOffline) {
-        exchangeRates = data.rates;
-        lastUpdateTimeUTC = data.date; // API 응답에 맞춰 'date' 키 사용
-        isOfflineMode = isOffline;
-        
-        if (!isOffline) {
-            const dataToCache = { 
-                rates: data.rates, 
-                date: data.date 
-            };
-            setSafeLocalStorage('cachedRates', dataToCache);
-        }
+  function onRatesLoaded(data, isOffline) {
+    exchangeRates = data.rates;
+
+    // [핵심 수정] isOffline(캐시 로드)일 경우 저장된 시간(data.date)을 사용하고,
+    // 온라인으로 새로 데이터를 받았을 때만 현재 시간을 ISO 형식으로 새로 생성합니다.
+    const newUpdateTime = isOffline ? data.date : new Date().toISOString();
+    lastUpdateTimeUTC = newUpdateTime;
+    isOfflineMode = isOffline;
+
+    if (!isOffline) {
+        // 캐시에 저장할 때도 새로 생성된 시간(newUpdateTime)을 저장합니다.
+        const dataToCache = {
+            rates: data.rates,
+            date: newUpdateTime // 'date' 키에 새로운 시간 정보 저장
+        };
+        setSafeLocalStorage('cachedRates', dataToCache);
+    }
 
         const savedLang = getSafeLocalStorage('preferredLanguage', 'ko');
         setLanguage(savedLang, true);
