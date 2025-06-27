@@ -35,29 +35,27 @@
             100% { transform: rotate(360deg); }
         }
         
-        /* [수정 1] 국기를 감싸는 컨테이너 스타일 */
         .flag-container {
             width: 40px;
             height: 40px;
-            border-radius: 50%; /* 컨테이너를 원으로 만듦 */
-            overflow: hidden;    /* 컨테이너 밖으로 나가는 이미지 자름 */
+            border-radius: 50%;
+            overflow: hidden;
             box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-            display: flex;       /* 내부 이미지를 중앙 정렬하기 위함 */
+            display: flex;
             justify-content: center;
             align-items: center;
-            background-color: #f8f9fa; /* 이미지가 로드되지 않을 때 배경색 */
+            background-color: #f8f9fa;
         }
         .flag-container img {
             width: 100%;
             height: 100%;
-            object-fit: cover; /* 이미지가 컨테이너를 꽉 채우도록 설정 */
+            object-fit: cover;
         }
 
-        /* [수정 2] 국가 이름 텍스트 정렬을 위한 스타일 */
         .currency-name-wrapper {
-            min-height: 36px; /* 2줄 분량의 최소 높이를 확보 */
+            min-height: 36px;
             display: flex;
-            align-items: center; /* 텍스트를 세로 중앙에 위치시킴 */
+            align-items: center;
             justify-content: center;
         }
 
@@ -329,23 +327,35 @@ document.addEventListener('DOMContentLoaded', () => {
     function createCurrencyCard(code) {
         const currency = targetCurrencies[code];
         const card = document.createElement('div');
-        card.className = `currency-item flex items-center gap-3 p-3 bg-gray-50 rounded-xl border-2 border-transparent transition-shadow duration-300`;
+        card.className = `currency-item flex items-center gap-3 p-3 bg-gray-50 rounded-xl border-2 border-transparent`;
         const inputElement = currentMode === 'expense'
             ? `<textarea class="autoresize-textarea currency-input w-full bg-white text-right font-semibold text-lg text-gray-800 rounded-md py-2 pl-8 pr-4 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" data-currency-code="${code}" placeholder="0" rows="1" aria-label="${currency.name} 입력"></textarea>`
             : `<input type="text" inputmode="decimal" class="currency-input w-full bg-white text-right font-semibold text-lg text-gray-800 rounded-md py-2 pl-8 pr-4 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" data-currency-code="${code}" placeholder="0.00" aria-label="${currency.name} 입력">`;
         
-        // --- [수정] 새로운 HTML 구조 적용 ---
-        card.innerHTML = `<div class="drag-handle p-2" role="button" tabindex="0"><svg class="w-6 h-6 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></div>
-                          <div class="flex flex-col items-center w-14 text-center">
-                              <div class="flag-container">
-                                  <img src="https://flagcdn.com/w40/${currency.country}.png" alt="${code}" onerror="this.style.display='none'">
-                              </div>
-                              <div class="currency-name-wrapper">
-                                  <p class="text-xs text-gray-500 w-full" data-translate-key="currency_name_${code.toLowerCase()}"></p>
-                              </div>
-                          </div>
-                          <div class="flex-grow"><p class="font-bold text-gray-800">${code}</p><p class="text-xs text-gray-500" data-translate-key="currency_pronunciation_${code.toLowerCase()}"></p></div>
-                          <div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">${currency.symbol}</span>${inputElement}</div>`;
+        // --- [최종 수정] 고정 너비 컬럼 레이아웃 적용 ---
+        card.innerHTML = `
+            <div class="drag-handle p-2" role="button" tabindex="0">
+                <svg class="w-6 h-6 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            </div>
+
+            <div class="flex flex-col items-center w-14 flex-shrink-0 text-center">
+                <div class="flag-container">
+                    <img src="https://flagcdn.com/w40/${currency.country}.png" alt="${code}" onerror="this.style.display='none'">
+                </div>
+                <div class="currency-name-wrapper">
+                    <p class="text-xs text-gray-500 w-full truncate" data-translate-key="currency_name_${code.toLowerCase()}"></p>
+                </div>
+            </div>
+
+            <div class="w-20 flex-shrink-0">
+                <p class="font-bold text-gray-800">${code}</p>
+                <p class="text-xs text-gray-500" data-translate-key="currency_pronunciation_${code.toLowerCase()}"></p>
+            </div>
+
+            <div class="relative flex-grow">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">${currency.symbol}</span>
+                ${inputElement}
+            </div>`;
         return card;
     }
     
