@@ -15,6 +15,10 @@
             font-family: 'Noto Sans KR', 'Noto Sans JP', 'Cairo', sans-serif;
             background-color: #f0f2f5;
         }
+        .loader-container {
+            text-align: center;
+            color: #4b5563;
+        }
         .loader {
             border: 5px solid #f3f3f3;
             border-top: 5px solid #3b82f6;
@@ -22,31 +26,41 @@
             width: 50px;
             height: 50px;
             animation: spin 1.2s linear infinite;
+            margin: 0 auto 1rem;
         }
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
         .currency-item {
-            transition: box-shadow 0.2s ease-in-out;
+            transition: box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out;
         }
         .drag-handle {
             cursor: grab;
-            touch-action: none; /* 터치 시 스크롤 등 기본 동작 방지 */
+            touch-action: none;
         }
         .dragging {
-            opacity: 0.8;
+            opacity: 0.9;
             background: #e0e7ff;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
             z-index: 50;
+            transform: scale(1.02);
+        }
+        .drop-placeholder {
+            height: 60px;
+            background-color: #e0e7ff;
+            border: 2px dashed #9ca3af;
+            border-radius: 0.75rem;
+            margin: 0.5rem 0;
         }
         body.is-dragging {
-            user-select: none; /* 드래그 중 텍스트 선택 방지 */
+            user-select: none;
+            -webkit-user-select: none;
         }
         .autoresize-textarea {
             resize: none;
             overflow: hidden;
-            min-height: 44px; /* 초기 높이 */
+            min-height: 44px;
         }
         .mode-btn.active {
             background-color: #3b82f6;
@@ -81,6 +95,19 @@
         }
         .blog-link:hover {
             color: #2563eb;
+        }
+        .copy-feedback {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.5s;
         }
     </style>
 </head>
@@ -123,7 +150,10 @@
             💡 팁: 입력창에 `100+50*95%` 처럼 계산할 수 있어요!
         </p>
         <div id="loader" class="flex justify-center items-center h-60">
-            <div class="loader"></div>
+             <div class="loader-container">
+                <div class="loader"></div>
+                <p data-translate-key="loading">환율 정보를 불러오는 중...</p>
+            </div>
         </div>
         <div id="calculator" class="hidden">
             <div id="currency-list" class="space-y-4"></div>
@@ -136,7 +166,12 @@
     <div id="total-summary-footer" class="fixed bottom-0 left-0 right-0 max-w-lg mx-auto bg-blue-600 text-white p-4 shadow-lg rounded-t-2xl hidden">
         <div class="flex justify-between items-center">
             <span class="text-lg font-bold" data-translate-key="total_sum">총 합계</span>
-            <span id="total-amount-display" class="text-2xl font-bold">₩ 0</span>
+             <div class="flex items-center gap-2">
+                <span id="total-amount-display" class="text-2xl font-bold">₩ 0</span>
+                <button id="copy-total-button" aria-label="Copy total amount" class="p-2 rounded-full hover:bg-blue-500 active:bg-blue-700">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                </button>
+            </div>
         </div>
         <button id="reset-button" class="w-full mt-3 bg-white text-blue-600 font-bold py-2 rounded-lg hover:bg-gray-100 transition" data-translate-key="reset_button">모든 입력 초기화</button>
     </div>
@@ -145,114 +180,20 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     // --- DOM 요소 ---
-    const mainContent = document.getElementById('main-content');
-    const currencyListContainer = document.getElementById('currency-list');
-    const lastUpdated = document.getElementById('last-updated');
-    const baseRateDisplay = document.getElementById('base-rate-display');
-    const loader = document.getElementById('loader');
-    const calculator = document.getElementById('calculator');
-    const errorMessage = document.getElementById('error-message');
-    const retryButton = document.getElementById('retry-button');
-    const totalSummaryFooter = document.getElementById('total-summary-footer');
-    const totalAmountDisplay = document.getElementById('total-amount-display');
-    const resetButton = document.getElementById('reset-button');
-    const modeExpenseBtn = document.getElementById('mode-expense');
-    const modeConverterBtn = document.getElementById('mode-converter');
-    const modeTip = document.getElementById('mode-tip');
-    const languageSelector = document.getElementById('language-selector');
+    const { mainContent, currencyListContainer, lastUpdated, baseRateDisplay, loader, calculator, errorMessage, retryButton, totalSummaryFooter, totalAmountDisplay, resetButton, modeExpenseBtn, modeConverterBtn, modeTip, languageSelector, copyTotalButton } = {
+        mainContent: document.getElementById('main-content'), currencyListContainer: document.getElementById('currency-list'), lastUpdated: document.getElementById('last-updated'), baseRateDisplay: document.getElementById('base-rate-display'), loader: document.getElementById('loader'), calculator: document.getElementById('calculator'), errorMessage: document.getElementById('error-message'), retryButton: document.getElementById('retry-button'), totalSummaryFooter: document.getElementById('total-summary-footer'), totalAmountDisplay: document.getElementById('total-amount-display'), resetButton: document.getElementById('reset-button'), modeExpenseBtn: document.getElementById('mode-expense'), modeConverterBtn: document.getElementById('mode-converter'), modeTip: document.getElementById('mode-tip'), languageSelector: document.getElementById('language-selector'), copyTotalButton: document.getElementById('copy-total-button'),
+    };
 
     // --- 상태 변수 ---
-    let exchangeRates = {};
-    let currentMode = 'expense'; // 'expense' or 'converter'
-    let currentLang = 'ko';
-    let lastUpdateTimeUTC;
-    let currencyOrder = [];
-    let isOfflineMode = false;
+    let exchangeRates = {}, currentMode = 'expense', currentLang = 'ko', lastUpdateTimeUTC, currencyOrder = [], isOfflineMode = false;
 
     // --- 데이터 (번역, 통화) ---
     const translations = {
-        ko: {
-            title: "환율 계산기", last_updated: "최종 업데이트:", mode_expense: "경비 합산", mode_converter: "환율 변환",
-            tip_expense: "💡 사용법: 맨 위 통화가 합계 기준입니다. 손잡이(☰)를 끌어 순서를 바꾸고, `10+10-10%`처럼 계산식을 입력하세요!",
-            tip_converter: "💡 팁: 한 통화에 값을 입력하면 나머지가 모두 변환됩니다.", error_message: "환율 정보를 불러오는 데 실패했습니다. 잠시 후 다시 시도해 주세요.",
-            retry_button: "다시 시도", total_sum: "총 합계", reset_button: "모든 입력 초기화", offline_mode: "오프라인 모드", blog_link: "블로그 방문하기",
-            currency_name_krw: "대한민국 원", currency_name_usd: "미국 달러", currency_name_jpy: "일본 엔",
-        },
-        en: {
-            title: "Currency Converter", last_updated: "Last Updated:", mode_expense: "Expense Sum", mode_converter: "Converter",
-            tip_expense: "💡 How to use: The top currency is the sum's base. Drag the handle (☰) to reorder and enter calculations like `10+10-10%`!",
-            tip_converter: "💡 Tip: Enter a value in one currency to convert all others.", error_message: "Failed to load exchange rates. Please try again later.",
-            retry_button: "Try Again", total_sum: "Total Sum", reset_button: "Reset All Inputs", offline_mode: "Offline Mode", blog_link: "Visit my blog",
-            currency_name_krw: "Korean Won", currency_name_usd: "US Dollar", currency_name_jpy: "Japanese Yen",
-        },
-        ja: {
-            title: "為替レート計算機", last_updated: "最終更新:", mode_expense: "経費合算", mode_converter: "為替変換",
-            tip_expense: "💡使い方: 一番上の通貨が合計の基準です。ハンドル(☰)をドラッグして順序を変え、`10+10-10%`のように計算式を入力してください！",
-            tip_converter: "💡ヒント：一つの通貨に値を入力すると、他がすべて変換されます。", error_message: "為替レートの読み込みに失敗しました。後でもう一度お試しください。",
-            retry_button: "再試行", total_sum: "合計", reset_button: "すべての入力をリセット", offline_mode: "オフラインモード", blog_link: "ブログを訪問",
-            currency_name_krw: "韓国ウォン", currency_name_usd: "米ドル", currency_name_jpy: "日本円",
-        },
-        zh: {
-            title: "汇率计算器", last_updated: "最后更新:", mode_expense: "费用合计", mode_converter: "汇率换算",
-            tip_expense: "💡 使用方法: 最上方的货币是总计的基准。拖动把手(☰)重新排序，并像 `10+10-10%` 一样输入计算！",
-            tip_converter: "💡 提示：在一个货币中输入一个值，所有其他货币都会转换。", error_message: "加载汇率失败。请稍后再试。",
-            retry_button: "重试", total_sum: "总计", reset_button: "重置所有输入", offline_mode: "离线模式", blog_link: "访问我的博客",
-            currency_name_krw: "韩元", currency_name_usd: "美元", currency_name_jpy: "日元",
-        },
-        ru: {
-            title: "Конвертер Валют", last_updated: "Последнее обновление:", mode_expense: "Сумма расходов", mode_converter: "Конвертер",
-            tip_expense: "💡 Как использовать: Верхняя валюта является базой для суммы. Перетащите ручку (☰) для переупорядочивания и введите вычисления вроде `10+10-10%`!",
-            tip_converter: "💡 Совет: Введите значение в одной валюте, чтобы преобразовать все остальные.", error_message: "Не удалось загрузить обменные курсы. Пожалуйста, попробуйте позже.",
-            retry_button: "Повторить", total_sum: "Общая сумма", reset_button: "Сбросить все", offline_mode: "Автономный режим", blog_link: "Посетить мой блог",
-        },
-        ka: {
-            title: "ვალუტის კონვერტერი", last_updated: "ბოლო განახლება:", mode_expense: "ხარჯების ჯამი", mode_converter: "კონვერტერი",
-            tip_expense: "💡 როგორ გამოვიყენოთ: ზედა ვალუტა არის ჯამის საფუძველი. გადაიტანეთ სახელური (☰) რიგის შესაცვლელად და შეიყვანეთ გამოთვლები როგორც `10+10-10%`!",
-            tip_converter: "💡 რჩევა: შეიყვანეთ მნიშვნელობა ერთ ვალუტაში, რომ გარდაქმნას ყველა სხვა.", error_message: "ვერ მოხერხდა გაცვლითი კურსების ჩატვირთვა. გთხოვთ სცადოთ მოგვიანებით.",
-            retry_button: "ხელახლა ცდა", total_sum: "სრული ჯამი", reset_button: "ყველა შეყვანის გადატვირთვა", offline_mode: "ოფლაინ რეჟიმი", blog_link: "ბლოგის მონახულება",
-        },
-        vi: {
-            title: "Máy Tính Tỷ Giá", last_updated: "Cập nhật lần cuối:", mode_expense: "Tổng Chi Phí", mode_converter: "Chuyển Đổi",
-            tip_expense: "💡 Cách sử dụng: Tiền tệ hàng đầu là cơ sở của tổng. Kéo tay cầm (☰) để sắp xếp lại và nhập tính toán như `10+10-10%`!",
-            tip_converter: "💡 Mẹo: Nhập giá trị trong một loại tiền để chuyển đổi tất cả các loại tiền khác.", error_message: "Không thể tải tỷ giá hối đoái. Vui lòng thử lại sau.",
-            retry_button: "Thử Lại", total_sum: "Tổng Cộng", reset_button: "Đặt Lại Tất Cả", offline_mode: "Chế độ ngoại tuyến", blog_link: "Ghé thăm blog của tôi",
-        },
-        th: {
-            title: "เครื่องคิดเลขอัตราแลกเปลี่ยน", last_updated: "อัปเดตล่าสุด:", mode_expense: "รวมค่าใช้จ่าย", mode_converter: "ตัวแปลง",
-            tip_expense: "💡 วิธีใช้: สกุลเงินด้านบนเป็นฐานของผลรวม ลากที่จับ (☰) เพื่อจัดเรียงใหม่และป้อนการคำนวณเช่น `10+10-10%`!",
-            tip_converter: "💡 เคล็ดลับ: ป้อนค่าในสกุลเงินหนึ่งเพื่อแปลงทั้งหมด", error_message: "ไม่สามารถโหลดอัตราแลกเปลี่ยนได้ โปรดลองอีกครั้งในภายหลัง",
-            retry_button: "ลองอีกครั้ง", total_sum: "ยอดรวมทั้งหมด", reset_button: "รีเซ็ตทั้งหมด", offline_mode: "โหมดออฟไลน์", blog_link: "เยี่ยมชมบล็อกของฉัน",
-        },
-        km: {
-            title: "គណនាអត្រាប្តូរប្រាក់", last_updated: "បានធ្វើបច្ចុប្បន្នភាពចុងក្រោយ:", mode_expense: "ចំណាយសរុប", mode_converter: "កម្មវិធីបំលែង",
-            tip_expense: "💡 របៀបប្រើប្រាស់: រូបិយប័ណ្ណកំពូលគឺជាមូលដ្ឋាននៃផលបូក។ អូសដៃ (☰) ដើម្បីតម្រៀងឡើងវិញ និងបញ្ចូលការគណនាដូចជា `10+10-10%`!",
-            tip_converter: "💡 គន្លឹះ: បញ្ចូលតម្លៃក្នុងរូបិយប័ណ្ណមួយដើម្បីបំលែងផ្សេងទៀត។", error_message: "បរាជ័យក្នុងការផ្ទុកអត្រាប្តូរប្រាក់។ សូមព្យាយាមម្តងទៀតពេលក្រោយ។",
-            retry_button: "ព្យាយាមម្តងទៀត", total_sum: "សរុបទាំងអស់", reset_button: "កំណត់ឡើងវិញទាំងអស់", offline_mode: "របៀបក្រៅបណ្តាញ", blog_link: "ទស្សនាប្លក់របស់ខ្ញុំ",
-        },
-        pt: {
-            title: "Conversor de Moedas", last_updated: "Última Atualização:", mode_expense: "Soma de Despesas", mode_converter: "Conversor",
-            tip_expense: "💡 Como usar: A moeda superior é a base da soma. Arraste a alça (☰) para reordenar e insira cálculos como `10+10-10%`!",
-            tip_converter: "💡 Dica: Digite um valor em uma moeda para converter todas as outras.", error_message: "Falha ao carregar as taxas de câmbio. Por favor, tente novamente mais tarde.",
-            retry_button: "Tentar Novamente", total_sum: "Soma Total", reset_button: "Redefinir Todas as Entradas", offline_mode: "Modo Offline", blog_link: "Visitar meu blog",
-        },
-        es: {}, fr: {}, de: {}, ar: {},
+        ko: { title: "환율 계산기", loading: "환율 정보를 불러오는 중...", last_updated: "최종 업데이트:", mode_expense: "경비 합산", mode_converter: "환율 변환", tip_expense: "💡 사용법: 맨 위 통화가 합계 기준입니다. 손잡이(☰)를 끌어 순서를 바꾸고, `10+10-10%`처럼 계산식을 입력하세요!", tip_converter: "💡 팁: 한 통화에 값을 입력하면 나머지가 모두 변환됩니다.", error_message: "환율 정보를 불러오는 데 실패했습니다. 잠시 후 다시 시도해 주세요.", retry_button: "다시 시도", total_sum: "총 합계", reset_button: "모든 입력 초기화", offline_mode: "오프라인 모드", blog_link: "블로그 방문하기", copied: "복사되었습니다!" },
+        en: { title: "Currency Converter", loading: "Loading rates...", last_updated: "Last Updated:", mode_expense: "Expense Sum", mode_converter: "Converter", tip_expense: "💡 How to use: The top currency is the sum's base. Drag the handle (☰) to reorder and enter calculations like `10+10-10%`!", tip_converter: "💡 Tip: Enter a value in one currency to convert all others.", error_message: "Failed to load exchange rates. Please try again later.", retry_button: "Try Again", total_sum: "Total Sum", reset_button: "Reset All Inputs", offline_mode: "Offline Mode", blog_link: "Visit my blog", copied: "Copied!" },
     };
-    const targetCurrencies = {
-        'KRW': { country: 'kr', name: '대한민국 원', symbol: '₩' }, 'JPY': { country: 'jp', name: '일본 엔', symbol: '¥' }, 'CNY': { country: 'cn', name: '중국 위안', symbol: '¥' }, 'HKD': { country: 'hk', name: '홍콩 달러', symbol: '$' },
-        'SGD': { country: 'sg', name: '싱가포르 달러', symbol: '$' }, 'THB': { country: 'th', name: '태국 바트', symbol: '฿' }, 'VND': { country: 'vn', name: '베트남 동', symbol: '₫' }, 'IDR': { country: 'id', name: '인도네시아 루피아', symbol: 'Rp' },
-        'PHP': { country: 'ph', name: '필리핀 페소', symbol: '₱' }, 'MYR': { country: 'my', name: '말레이시아 링깃', symbol: 'RM' }, 'INR': { country: 'in', name: '인도 루피', symbol: '₹' }, 'KHR': { country: 'kh', name: '캄보디아 리엘', symbol: '៛' },
-        'LAK': { country: 'la', name: '라오스 킵', symbol: '₭' }, 'USD': { country: 'us', name: '미국 달러', symbol: '$' }, 'CAD': { country: 'ca', name: '캐나다 달러', symbol: '$' }, 'MXN': { country: 'mx', name: '멕시코 페소', symbol: '$' },
-        'BRL': { country: 'br', name: '브라질 헤알', symbol: 'R$' }, 'ARS': { country: 'ar', name: '아르헨티나 페소', symbol: '$' }, 'CLP': { country: 'cl', name: '칠레 페소', symbol: '$' }, 'COP': { country: 'co', name: '콜롬비아 페소', symbol: '$' },
-        'PEN': { country: 'pe', name: '페루 솔', symbol: 'S/.' }, 'EUR': { country: 'eu', name: '유럽 유로', symbol: '€' }, 'GBP': { country: 'gb', name: '영국 파운드', symbol: '£' }, 'CHF': { country: 'ch', name: '스위스 프랑', symbol: 'Fr' },
-        'TRY': { country: 'tr', name: '터키 리라', symbol: '₺' }, 'PLN': { country: 'pl', name: '폴란드 즈워티', symbol: 'zł' }, 'CZK': { country: 'cz', name: '체코 코루나', symbol: 'Kč' }, 'HUF': { country: 'hu', name: '헝가리 포린트', symbol: 'Ft' },
-        'BAM': { country: 'ba', name: '보스니아 마르카', symbol: 'KM' }, 'RSD': { country: 'rs', name: '세르비아 디나르', symbol: 'din' }, 'MKD': { country: 'mk', name: '북마케도니아 데나르', symbol: 'ден' }, 'ALL': { country: 'al', name: '알바니아 렉', symbol: 'L' },
-        'BGN': { country: 'bg', name: '불가리아 레프', symbol: 'лв' }, 'RON': { country: 'ro', name: '루마니아 레우', symbol: 'lei' }, 'MDL': { country: 'md', name: '몰도바 레우', symbol: 'L' }, 'GEL': { country: 'ge', name: '조지아 라리', symbol: '₾' },
-        'NOK': { country: 'no', name: '노르웨이 크로네', symbol: 'kr' }, 'SEK': { country: 'se', name: '스웨덴 크로나', symbol: 'kr' }, 'DKK': { country: 'dk', name: '덴마크 크로네', symbol: 'kr' }, 'AUD': { country: 'au', name: '호주 달러', symbol: '$' },
-        'NZD': { country: 'nz', name: '뉴질랜드 달러', symbol: '$' }, 'AED': { country: 'ae', name: 'UAE 디르함', symbol: 'د.إ' }, 'ILS': { country: 'il', name: '이스라엘 셰켈', symbol: '₪' }, 'EGP': { country: 'eg', name: '이집트 파운드', symbol: 'E£' },
-        'ZAR': { country: 'za', name: '남아공 랜드', symbol: 'R' },
-    };
+    const targetCurrencies = { 'KRW': { country: 'kr', name: '대한민국 원', symbol: '₩' }, 'JPY': { country: 'jp', name: '일본 엔', symbol: '¥' }, 'CNY': { country: 'cn', name: '중국 위안', symbol: '¥' }, 'HKD': { country: 'hk', name: '홍콩 달러', symbol: '$' }, 'SGD': { country: 'sg', name: '싱가포르 달러', symbol: '$' }, 'THB': { country: 'th', name: '태국 바트', symbol: '฿' }, 'VND': { country: 'vn', name: '베트남 동', symbol: '₫' }, 'IDR': { country: 'id', name: '인도네시아 루피아', symbol: 'Rp' }, 'PHP': { country: 'ph', name: '필리핀 페소', symbol: '₱' }, 'MYR': { country: 'my', name: '말레이시아 링깃', symbol: 'RM' }, 'INR': { country: 'in', name: '인도 루피', symbol: '₹' }, 'KHR': { country: 'kh', name: '캄보디아 리엘', symbol: '៛' }, 'LAK': { country: 'la', name: '라오스 킵', symbol: '₭' }, 'USD': { country: 'us', name: '미국 달러', symbol: '$' }, 'CAD': { country: 'ca', name: '캐나다 달러', symbol: '$' }, 'MXN': { country: 'mx', name: '멕시코 페소', symbol: '$' }, 'BRL': { country: 'br', name: '브라질 헤알', symbol: 'R$' }, 'ARS': { country: 'ar', name: '아르헨티나 페소', symbol: '$' }, 'CLP': { country: 'cl', name: '칠레 페소', symbol: '$' }, 'COP': { country: 'co', name: '콜롬비아 페소', symbol: '$' }, 'PEN': { country: 'pe', name: '페루 솔', symbol: 'S/.' }, 'EUR': { country: 'eu', name: '유럽 유로', symbol: '€' }, 'GBP': { country: 'gb', name: '영국 파운드', symbol: '£' }, 'CHF': { country: 'ch', name: '스위스 프랑', symbol: 'Fr' }, 'TRY': { country: 'tr', name: '터키 리라', symbol: '₺' }, 'PLN': { country: 'pl', name: '폴란드 즈워티', symbol: 'zł' }, 'CZK': { country: 'cz', name: '체코 코루나', symbol: 'Kč' }, 'HUF': { country: 'hu', name: '헝가리 포린트', symbol: 'Ft' }, 'BAM': { country: 'ba', name: '보스니아 마르카', symbol: 'KM' }, 'RSD': { country: 'rs', name: '세르비아 디나르', symbol: 'din' }, 'MKD': { country: 'mk', name: '북마케도니아 데나르', symbol: 'ден' }, 'ALL': { country: 'al', name: '알바니아 렉', symbol: 'L' }, 'BGN': { country: 'bg', name: '불가리아 레프', symbol: 'лв' }, 'RON': { country: 'ro', name: '루마니아 레우', symbol: 'lei' }, 'MDL': { country: 'md', name: '몰도바 레우', symbol: 'L' }, 'GEL': { country: 'ge', name: '조지아 라리', symbol: '₾' }, 'NOK': { country: 'no', name: '노르웨이 크로네', symbol: 'kr' }, 'SEK': { country: 'se', name: '스웨덴 크로나', symbol: 'kr' }, 'DKK': { country: 'dk', name: '덴마크 크로네', symbol: 'kr' }, 'AUD': { country: 'au', name: '호주 달러', symbol: '$' }, 'NZD': { country: 'nz', name: '뉴질랜드 달러', symbol: '$' }, 'AED': { country: 'ae', name: 'UAE 디르함', symbol: 'د.إ' }, 'ILS': { country: 'il', name: '이스라엘 셰켈', symbol: '₪' }, 'EGP': { country: 'eg', name: '이집트 파운드', symbol: 'E£' }, 'ZAR': { country: 'za', name: '남아공 랜드', symbol: 'R' }, };
 
-    // --- 앱 초기화 및 이벤트 리스너 설정 ---
     initializeApp();
 
     function initializeApp() {
@@ -268,32 +209,24 @@ document.addEventListener('DOMContentLoaded', () => {
         modeExpenseBtn.addEventListener('click', () => setMode('expense'));
         modeConverterBtn.addEventListener('click', () => setMode('converter'));
         resetButton.addEventListener('click', resetAllInputs);
+        copyTotalButton.addEventListener('click', copyTotalToClipboard);
     }
 
-    // --- 로컬스토리지 유틸 ---
     function getSafeLocalStorage(key, defaultValue) {
-        try {
-            const value = localStorage.getItem(key);
-            return value !== null ? JSON.parse(value) : defaultValue;
-        } catch (e) { return defaultValue; }
+        try { const value = localStorage.getItem(key); return value !== null ? JSON.parse(value) : defaultValue; } 
+        catch (e) { return defaultValue; }
     }
 
     function setSafeLocalStorage(key, value) {
-        try {
-            localStorage.setItem(key, JSON.stringify(value));
-        } catch (e) { console.warn("localStorage 저장 실패:", e); }
+        try { localStorage.setItem(key, JSON.stringify(value)); } 
+        catch (e) { console.warn("localStorage 저장 실패:", e); }
     }
 
     function loadCurrencyOrder() {
         const savedOrder = getSafeLocalStorage('currencyOrder', null);
-        if (savedOrder && Array.isArray(savedOrder) && savedOrder.length > 0 && savedOrder.every(code => targetCurrencies[code])) {
-            currencyOrder = savedOrder;
-        } else {
-            currencyOrder = Object.keys(targetCurrencies);
-        }
+        currencyOrder = (savedOrder && Array.isArray(savedOrder) && savedOrder.every(code => targetCurrencies[code])) ? savedOrder : Object.keys(targetCurrencies);
     }
 
-    // --- API & 데이터 관리 ---
     async function fetchRates(retryCount = 3, delay = 1000) {
         showLoader();
         for (let i = 0; i < retryCount; i++) {
@@ -302,17 +235,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!response.ok) throw new Error(`Network error: ${response.status}`);
                 const data = await response.json();
                 if (data.result !== 'success') throw new Error('API returned an error');
-                
-                onRatesLoaded(data, false); // isOffline = false
+                onRatesLoaded(data, false);
                 return;
             } catch (error) {
                 if (i === retryCount - 1) {
                     const cachedData = getSafeLocalStorage('cachedRates', null);
-                    if (cachedData) {
-                        onRatesLoaded(cachedData, true); // isOffline = true
-                    } else {
-                        showError();
-                    }
+                    if (cachedData) onRatesLoaded(cachedData, true);
+                    else showError();
                 } else {
                     await new Promise(resolve => setTimeout(resolve, delay));
                 }
@@ -324,29 +253,29 @@ document.addEventListener('DOMContentLoaded', () => {
         exchangeRates = data.rates;
         lastUpdateTimeUTC = data.time_last_update_utc;
         isOfflineMode = isOffline;
-    
-        if (!isOffline) {
-             setSafeLocalStorage('cachedRates', data);
-        }
+        if (!isOffline) setSafeLocalStorage('cachedRates', data);
 
         const savedLang = getSafeLocalStorage('preferredLanguage', 'ko');
-        currentLang = savedLang;
-        languageSelector.value = savedLang;
-        document.documentElement.lang = savedLang;
-        document.body.dir = savedLang === 'ar' ? 'rtl' : 'ltr';
-        
-        setMode(currentMode, true); // isInitialLoad = true
+        setLanguage(savedLang, true);
+        setMode(getSafeLocalStorage('preferredMode', 'expense'), true);
         showCalculator();
     }
 
-    // --- 모드 및 UI 관리 ---
     function setMode(newMode, isInitialLoad = false) {
         currentMode = newMode;
-        if (!isInitialLoad) {
-            document.querySelectorAll('.currency-input').forEach(input => input.value = '');
-        }
+        setSafeLocalStorage('preferredMode', newMode);
+        if (!isInitialLoad) document.querySelectorAll('.currency-input').forEach(input => input.value = '');
         buildCalculatorUI();
         applyTranslations();
+    }
+    
+    function setLanguage(lang, isInitialLoad = false) {
+        currentLang = lang;
+        if (!isInitialLoad) setSafeLocalStorage('preferredLanguage', lang);
+        languageSelector.value = lang;
+        document.documentElement.lang = lang;
+        document.body.dir = lang === 'ar' ? 'rtl' : 'ltr';
+        if (!isInitialLoad) applyTranslations();
     }
 
     function buildCalculatorUI() {
@@ -354,60 +283,32 @@ document.addEventListener('DOMContentLoaded', () => {
         currencyOrder.forEach(code => currencyListContainer.appendChild(createCurrencyCard(code)));
         registerDynamicEventListeners();
     }
-    
+
     function createCurrencyCard(code) {
         const currency = targetCurrencies[code];
         const card = document.createElement('div');
-        card.className = `flex items-center gap-3 p-3 bg-gray-50 rounded-xl border-2 border-transparent transition-shadow duration-300 currency-item`;
-        
+        card.className = `currency-item flex items-center gap-3 p-3 bg-gray-50 rounded-xl border-2 border-transparent transition-shadow duration-300`;
         const inputElement = currentMode === 'expense'
             ? `<textarea class="autoresize-textarea currency-input w-full bg-white text-right font-semibold text-lg text-gray-800 rounded-md py-2 pl-8 pr-4 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" data-currency-code="${code}" placeholder="0" rows="1" aria-label="${currency.name} 입력"></textarea>`
             : `<input type="text" inputmode="decimal" class="currency-input w-full bg-white text-right font-semibold text-lg text-gray-800 rounded-md py-2 pl-8 pr-4 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" data-currency-code="${code}" placeholder="0.00" aria-label="${currency.name} 입력">`;
-
-        card.innerHTML = `
-            <div class="drag-handle p-2" aria-label="순서 변경" role="button" tabindex="0">
-                <svg class="w-6 h-6 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            </div>
-            <div class="flex flex-col items-center w-14 text-center">
-                <img src="https://flagcdn.com/w40/${currency.country}.png" alt="${code}" class="w-10 h-10 rounded-full shadow-sm" onerror="this.style.display='none'">
-                <p class="text-xs text-gray-500 mt-1 w-full truncate" data-translate-key="currency_name_${code.toLowerCase()}"></p>
-            </div>
-            <div class="flex-grow">
-                <p class="font-bold text-gray-800">${code}</p>
-                <p class="text-xs text-gray-500" data-translate-key="currency_pronunciation_${code.toLowerCase()}"></p>
-            </div>
-            <div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">${currency.symbol}</span>${inputElement}</div>`;
+        card.innerHTML = `<div class="drag-handle p-2" role="button" tabindex="0"><svg class="w-6 h-6 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></div><div class="flex flex-col items-center w-14 text-center"><img src="https://flagcdn.com/w40/${currency.country}.png" alt="${code}" class="w-10 h-10 rounded-full shadow-sm" onerror="this.style.display='none'"><p class="text-xs text-gray-500 mt-1 w-full truncate" data-translate-key="currency_name_${code.toLowerCase()}"></p></div><div class="flex-grow"><p class="font-bold text-gray-800">${code}</p><p class="text-xs text-gray-500" data-translate-key="currency_pronunciation_${code.toLowerCase()}"></p></div><div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">${currency.symbol}</span>${inputElement}</div>`;
         return card;
     }
-
+    
     function applyTranslations() {
         const lang = currentLang;
         document.querySelectorAll('[data-translate-key]').forEach(el => {
             const key = el.dataset.translateKey;
-            const translation = translations[lang]?.[key] ?? translations['en']?.[key] ?? '';
-            if (translation) el.textContent = translation;
+            el.textContent = translations[lang]?.[key] ?? translations['en']?.[key] ?? (el.dataset.translateKey.startsWith('currency_') ? '' : key);
         });
-
         if (lastUpdateTimeUTC) {
             const updateDate = new Date(lastUpdateTimeUTC);
             const prefix = translations[lang]?.last_updated ?? 'Last Updated:';
             lastUpdated.innerHTML = `${prefix} ${updateDate.toLocaleString(lang)}`;
-            if (isOfflineMode) {
-                const offlineText = translations[lang]?.offline_mode ?? 'Offline Mode';
-                lastUpdated.innerHTML += ` <span class="offline-indicator">${offlineText}</span>`;
-            }
+            if (isOfflineMode) lastUpdated.innerHTML += ` <span class="offline-indicator">${translations[lang]?.offline_mode ?? 'Offline Mode'}</span>`;
         }
         updateBaseRateDisplay();
         updateModeUI();
-    }
-
-    function setLanguage(lang) {
-        currentLang = lang;
-        setSafeLocalStorage('preferredLanguage', lang);
-        languageSelector.value = lang;
-        document.documentElement.lang = lang;
-        document.body.dir = lang === 'ar' ? 'rtl' : 'ltr';
-        applyTranslations();
     }
 
     function updateModeUI() {
@@ -423,111 +324,131 @@ document.addEventListener('DOMContentLoaded', () => {
         updateTotalAmount();
     }
 
-    // --- 동적 이벤트 리스너 ---
     function registerDynamicEventListeners() {
-        // 입력 필드 리스너
         document.querySelectorAll('.currency-input').forEach(input => {
-            const handler = currentMode === 'expense' ? handleExpenseInput : handleConverterInput;
-            input.addEventListener('input', handler);
+            input.addEventListener('input', currentMode === 'expense' ? handleExpenseInput : handleConverterInput);
         });
-        
-        // 드래그 앤 드롭 리스너
         addDragDropListeners();
     }
-
-    function handleExpenseInput(e) {
-        autoResizeTextarea(e.target);
-        updateTotalAmount();
-    }
+    
+    function handleExpenseInput(e) { autoResizeTextarea(e.target); updateTotalAmount(); }
     
     function handleConverterInput(e) {
         const sourceInput = e.target;
-        const sourceCode = sourceInput.dataset.currencyCode;
         const sourceValue = parseFloat(sourceInput.value.replace(/,/g, ''));
-
         if (isNaN(sourceValue) || sourceValue === 0) {
-            document.querySelectorAll('.currency-input').forEach(input => {
-                if (input !== sourceInput) input.value = '';
-            });
+            document.querySelectorAll('.currency-input').forEach(i => { if (i !== sourceInput) i.value = ''; });
             return;
         }
-
-        const sourceValueInUSD = sourceValue / exchangeRates[sourceCode];
-
+        const sourceValueInUSD = sourceValue / exchangeRates[sourceInput.dataset.currencyCode];
         document.querySelectorAll('.currency-input').forEach(input => {
             if (input !== sourceInput) {
-                const targetCode = input.dataset.currencyCode;
-                const targetValue = sourceValueInUSD * exchangeRates[targetCode];
+                const targetValue = sourceValueInUSD * exchangeRates[input.dataset.currencyCode];
                 input.value = targetValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             }
         });
     }
 
     function addDragDropListeners() {
-        let draggingEl = null;
+        let draggingEl = null, autoscrollInterval = null, longPressTimer = null;
+        let placeholder = document.createElement('div');
+        placeholder.className = 'drop-placeholder';
 
-        currencyListContainer.addEventListener('pointerdown', (e) => {
+        currencyListContainer.addEventListener('pointerdown', e => {
             const handle = e.target.closest('.drag-handle');
-            if (!handle) return;
+            if (!handle || e.button !== 0) return;
             
-            if(e.pointerType === 'touch') e.preventDefault(); // 터치 스크롤 방지
-            
-            draggingEl = handle.closest('.currency-item');
-            if (!draggingEl) return;
-
-            draggingEl.classList.add('dragging');
-            document.body.classList.add('is-dragging');
-        });
-
-        document.addEventListener('pointermove', (e) => {
-            if (!draggingEl) return;
-            
-            const clientY = e.clientY;
-            const afterElement = getDragAfterElement(currencyListContainer, clientY);
-            if (afterElement) {
-                currencyListContainer.insertBefore(draggingEl, afterElement);
+            if (e.pointerType === 'touch') {
+                longPressTimer = setTimeout(() => {
+                    e.preventDefault();
+                    startDrag(handle.closest('.currency-item'));
+                }, 200);
             } else {
-                currencyListContainer.appendChild(draggingEl);
+                e.preventDefault();
+                startDrag(handle.closest('.currency-item'));
             }
         });
 
-        document.addEventListener('pointerup', () => {
+        currencyListContainer.addEventListener('pointerup', () => clearTimeout(longPressTimer));
+        currencyListContainer.addEventListener('pointercancel', () => clearTimeout(longPressTimer));
+
+        currencyListContainer.addEventListener('keydown', e => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            const handle = e.target.closest('.drag-handle');
+            if (!handle) return;
+            e.preventDefault();
+            const item = handle.closest('.currency-item');
+            const sibling = e.shiftKey ? item.previousElementSibling : item.nextElementSibling;
+            if (sibling && sibling.matches('.currency-item')) {
+                sibling.insertAdjacentElement(e.shiftKey ? 'beforebegin' : 'afterend', item);
+                handle.focus();
+                saveOrderAndRefresh();
+            }
+        });
+
+        function startDrag(el) {
+            draggingEl = el;
+            draggingEl.classList.add('dragging');
+            draggingEl.after(placeholder);
+            document.body.classList.add('is-dragging');
+            document.addEventListener('pointermove', onPointerMove);
+            document.addEventListener('pointerup', onPointerUp, { once: true });
+        }
+
+        function onPointerMove(e) {
             if (!draggingEl) return;
+            const afterElement = getDragAfterElement(currencyListContainer, e.clientY);
+            currencyListContainer.insertBefore(placeholder, afterElement);
+            handleAutoscroll(e.clientY);
+        }
+
+        function onPointerUp() {
+            if (!draggingEl) return;
+            clearTimeout(longPressTimer);
+            document.removeEventListener('pointermove', onPointerMove);
+            clearInterval(autoscrollInterval);
+            autoscrollInterval = null;
             
+            placeholder.replaceWith(draggingEl);
             draggingEl.classList.remove('dragging');
             document.body.classList.remove('is-dragging');
             draggingEl = null;
-            
-            currencyOrder = Array.from(currencyListContainer.querySelectorAll('.currency-input')).map(input => input.dataset.currencyCode);
-            setSafeLocalStorage('currencyOrder', currencyOrder);
-            updateBaseRateDisplay();
-            updateTotalAmount();
-        });
+            saveOrderAndRefresh();
+        }
+        
+        function handleAutoscroll(clientY) {
+            clearInterval(autoscrollInterval);
+            const scrollThreshold = 80;
+            if (clientY < scrollThreshold) {
+                autoscrollInterval = setInterval(() => window.scrollBy(0, -10), 16);
+            } else if (clientY > window.innerHeight - scrollThreshold) {
+                autoscrollInterval = setInterval(() => window.scrollBy(0, 10), 16);
+            }
+        }
     }
-    
+
     function getDragAfterElement(container, y) {
         const draggableElements = [...container.querySelectorAll('.currency-item:not(.dragging)')];
         return draggableElements.reduce((closest, child) => {
             const box = child.getBoundingClientRect();
             const offset = y - box.top - box.height / 2;
-            if (offset < 0 && offset > closest.offset) {
-                return { offset, element: child };
-            } else {
-                return closest;
-            }
+            return (offset < 0 && offset > closest.offset) ? { offset, element: child } : closest;
         }, { offset: Number.NEGATIVE_INFINITY }).element;
     }
 
-    // --- 계산 및 유틸 ---
+    function saveOrderAndRefresh() {
+        currencyOrder = Array.from(currencyListContainer.querySelectorAll('.currency-input')).map(input => input.dataset.currencyCode);
+        setSafeLocalStorage('currencyOrder', currencyOrder);
+        updateBaseRateDisplay();
+        updateTotalAmount();
+    }
+    
     function evaluateExpression(str) {
-        if (!str || str.trim() === '') return 0;
+        if (!str || !str.trim()) return 0;
         try {
-            let sanitizedStr = str.replace(/[^0-9\.\+\-\*\/\(\)\%]/g, '');
-            sanitizedStr = sanitizedStr.replace(/(\d*\.?\d+)%/g, '($1/100)');
-            return new Function('return ' + sanitizedStr)();
-        } catch (e) {
-            return 0;
-        }
+            const sanitized = str.replace(/[^-()\d/*+%.]/g, '').replace(/(\d*\.?\d+)%/g, '($1/100)');
+            return Function('"use strict";return (' + sanitized + ')')();
+        } catch { return 0; }
     }
     
     function updateBaseRateDisplay() {
@@ -543,51 +464,56 @@ document.addEventListener('DOMContentLoaded', () => {
         const baseCode = currencyOrder[0];
         let totalUSD = 0;
         document.querySelectorAll('.currency-input').forEach(input => {
-            const code = input.dataset.currencyCode;
             const value = evaluateExpression(input.value);
-            if (!isNaN(value) && value !== 0 && exchangeRates[code]) {
-                totalUSD += value / exchangeRates[code];
+            if (value && exchangeRates[input.dataset.currencyCode]) {
+                totalUSD += value / exchangeRates[input.dataset.currencyCode];
             }
         });
-
-        const totalInBase = totalUSD * exchangeRates[baseCode];
-        const symbol = targetCurrencies[baseCode].symbol;
-        totalAmountDisplay.textContent = `${symbol} ${totalInBase.toLocaleString('ko-KR', {maximumFractionDigits: 0})}`;
+        const totalInBase = totalUSD * (exchangeRates[baseCode] || 0);
+        totalAmountDisplay.textContent = `${targetCurrencies[baseCode].symbol} ${totalInBase.toLocaleString('ko-KR', {maximumFractionDigits: 0})}`;
     }
 
     function resetAllInputs() {
-        document.querySelectorAll('.currency-input').forEach(input => {
-            input.value = '';
-            autoResizeTextarea(input);
-        });
+        document.querySelectorAll('.currency-input').forEach(input => { input.value = ''; autoResizeTextarea(input); });
         updateTotalAmount();
     }
     
     function autoResizeTextarea(textarea) {
-        if (textarea?.tagName?.toLowerCase() === 'textarea') {
-            textarea.style.height = 'auto';
-            textarea.style.height = `${textarea.scrollHeight}px`;
+        if (textarea?.tagName?.toLowerCase() === 'textarea') { textarea.style.height = 'auto'; textarea.style.height = `${textarea.scrollHeight}px`; }
+    }
+    
+    function copyTotalToClipboard() {
+        const textToCopy = totalAmountDisplay.textContent;
+        const textArea = document.createElement("textarea");
+        textArea.value = textToCopy.replace(/[^0-9.]/g, ''); // 숫자만 복사
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            showCopyFeedback();
+        } catch (err) {
+            console.error('클립보드 복사 실패:', err);
         }
+        document.body.removeChild(textArea);
+    }
+    
+    function showCopyFeedback() {
+        let feedback = document.querySelector('.copy-feedback');
+        if (!feedback) {
+            feedback = document.createElement('div');
+            feedback.className = 'copy-feedback';
+            document.body.appendChild(feedback);
+        }
+        feedback.textContent = translations[currentLang]?.copied ?? 'Copied!';
+        feedback.style.opacity = 1;
+        setTimeout(() => {
+            feedback.style.opacity = 0;
+        }, 2000);
     }
 
-    // --- UI 상태 변경 ---
-    function showLoader() {
-        loader.classList.remove('hidden');
-        calculator.classList.add('hidden');
-        errorMessage.classList.add('hidden');
-    }
-
-    function showCalculator() {
-        loader.classList.add('hidden');
-        calculator.classList.remove('hidden');
-        errorMessage.classList.add('hidden');
-    }
-
-    function showError() {
-        loader.classList.add('hidden');
-        calculator.classList.add('hidden');
-        errorMessage.classList.remove('hidden');
-    }
+    function showLoader() { loader.classList.remove('hidden'); calculator.classList.add('hidden'); errorMessage.classList.add('hidden'); }
+    function showCalculator() { loader.classList.add('hidden'); calculator.classList.remove('hidden'); errorMessage.classList.add('hidden'); }
+    function showError() { loader.classList.add('hidden'); calculator.classList.add('hidden'); errorMessage.classList.remove('hidden'); }
 });
 </script>
 </body>
