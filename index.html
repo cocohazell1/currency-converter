@@ -215,9 +215,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let exchangeRates = {}, currentMode = 'expense', currentLang = 'ko', lastUpdateTimeUTC, currencyOrder = [], isOfflineMode = false;
 
     // --- 데이터 (번역, 통화) ---
+    // [수정] 모든 언어에 대한 기본 번역 데이터 추가 (영문 기준)
+    const en_translations = { title: "Currency Converter", loading: "Loading rates...", last_updated: "Last Updated:", mode_expense: "Expense Sum", mode_converter: "Converter", tip_expense: "💡 How to use: The top currency is the sum's base. Drag the handle (☰) to reorder and enter calculations like `10+10-10%`!", tip_converter: "💡 Tip: Enter a value in one currency to convert all others.", error_message: "Failed to load exchange rates. Please try again later.", retry_button: "Try Again", total_sum: "Total Sum", reset_button: "Reset All Inputs", offline_mode: "Offline Mode", blog_link: "Visit my blog", copied: "Copied!", currency_name_krw:"South Korea", currency_pronunciation_krw:"Won", currency_name_jpy:"Japan", currency_pronunciation_jpy:"Yen", currency_name_cny:"China", currency_pronunciation_cny:"Yuan", currency_name_hkd:"Hong Kong", currency_pronunciation_hkd:"Dollar", currency_name_sgd:"Singapore", currency_pronunciation_sgd:"Dollar", currency_name_thb:"Thailand", currency_pronunciation_thb:"Baht", currency_name_vnd:"Vietnam", currency_pronunciation_vnd:"Dong", currency_name_idr:"Indonesia", currency_pronunciation_idr:"Rupiah", currency_name_php:"Philippines", currency_pronunciation_php:"Peso", currency_name_myr:"Malaysia", currency_pronunciation_myr:"Ringgit", currency_name_inr:"India", currency_pronunciation_inr:"Rupee", currency_name_khr:"Cambodia", currency_pronunciation_khr:"Riel", currency_name_lak:"Laos", currency_pronunciation_lak:"Kip", currency_name_usd:"United States", currency_pronunciation_usd:"Dollar", currency_name_cad:"Canada", currency_pronunciation_cad:"Dollar", currency_name_mxn:"Mexico", currency_pronunciation_mxn:"Peso", currency_name_brl:"Brazil", currency_pronunciation_brl:"Real", currency_name_ars:"Argentina", currency_pronunciation_ars:"Peso", currency_name_clp:"Chile", currency_pronunciation_clp:"Peso", currency_name_cop:"Colombia", currency_pronunciation_cop:"Peso", currency_name_pen:"Peru", currency_pronunciation_pen:"Sol", currency_name_eur:"Europe", currency_pronunciation_eur:"Euro", currency_name_gbp:"United Kingdom", currency_pronunciation_gbp:"Pound", currency_name_chf:"Switzerland", currency_pronunciation_chf:"Franc", currency_name_try:"Turkey", currency_pronunciation_try:"Lira", currency_name_pln:"Poland", currency_pronunciation_pln:"Złoty", currency_name_czk:"Czech Republic", currency_pronunciation_czk:"Koruna", currency_name_huf:"Hungary", currency_pronunciation_huf:"Forint", currency_name_bam:"Bosnia", currency_pronunciation_bam:"Mark", currency_name_rsd:"Serbia", currency_pronunciation_rsd:"Dinar", currency_name_mkd:"North Macedonia", currency_pronunciation_mkd:"Denar", currency_name_all:"Albania", currency_pronunciation_all:"Lek", currency_name_bgn:"Bulgaria", currency_pronunciation_bgn:"Lev", currency_name_ron:"Romania", currency_pronunciation_ron:"Leu", currency_name_mdl:"Moldova", currency_pronunciation_mdl:"Leu", currency_name_gel:"Georgia", currency_pronunciation_gel:"Lari", currency_name_nok:"Norway", currency_pronunciation_nok:"Krone", currency_name_sek:"Sweden", currency_pronunciation_sek:"Krona", currency_name_dkk:"Denmark", currency_pronunciation_dkk:"Krone", currency_name_aud:"Australia", currency_pronunciation_aud:"Dollar", currency_name_nzd:"New Zealand", currency_pronunciation_nzd:"Dollar", currency_name_aed:"UAE", currency_pronunciation_aed:"Dirham", currency_name_ils:"Israel", currency_pronunciation_ils:"Shekel", currency_name_egp:"Egypt", currency_pronunciation_egp:"Pound", currency_name_zar:"South Africa", currency_pronunciation_zar:"Rand" };
     const translations = {
         ko: { title: "환율 계산기", loading: "환율 정보를 불러오는 중...", last_updated: "최종 업데이트:", mode_expense: "경비 합산", mode_converter: "환율 변환", tip_expense: "💡 사용법: 맨 위 통화가 합계 기준입니다. 손잡이(☰)를 끌어 순서를 바꾸고, `10+10-10%`처럼 계산식을 입력하세요!", tip_converter: "💡 팁: 한 통화에 값을 입력하면 나머지가 모두 변환됩니다.", error_message: "환율 정보를 불러오는 데 실패했습니다. 잠시 후 다시 시도해 주세요.", retry_button: "다시 시도", total_sum: "총 합계", reset_button: "모든 입력 초기화", offline_mode: "오프라인 모드", blog_link: "블로그 방문하기", copied: "복사되었습니다!", currency_name_krw:"대한민국", currency_pronunciation_krw:"원", currency_name_jpy:"일본", currency_pronunciation_jpy:"엔", currency_name_cny:"중국", currency_pronunciation_cny:"위안", currency_name_hkd:"홍콩", currency_pronunciation_hkd:"달러", currency_name_sgd:"싱가포르", currency_pronunciation_sgd:"달러", currency_name_thb:"태국", currency_pronunciation_thb:"바트", currency_name_vnd:"베트남", currency_pronunciation_vnd:"동", currency_name_idr:"인도네시아", currency_pronunciation_idr:"루피아", currency_name_php:"필리핀", currency_pronunciation_php:"페소", currency_name_myr:"말레이시아", currency_pronunciation_myr:"링깃", currency_name_inr:"인도", currency_pronunciation_inr:"루피", currency_name_khr:"캄보디아", currency_pronunciation_khr:"리엘", currency_name_lak:"라오스", currency_pronunciation_lak:"킵", currency_name_usd:"미국", currency_pronunciation_usd:"달러", currency_name_cad:"캐나다", currency_pronunciation_cad:"달러", currency_name_mxn:"멕시코", currency_pronunciation_mxn:"페소", currency_name_brl:"브라질", currency_pronunciation_brl:"헤알", currency_name_ars:"아르헨티나", currency_pronunciation_ars:"페소", currency_name_clp:"칠레", currency_pronunciation_clp:"페소", currency_name_cop:"콜롬비아", currency_pronunciation_cop:"페소", currency_name_pen:"페루", currency_pronunciation_pen:"솔", currency_name_eur:"유럽", currency_pronunciation_eur:"유로", currency_name_gbp:"영국", currency_pronunciation_gbp:"파운드", currency_name_chf:"스위스", currency_pronunciation_chf:"프랑", currency_name_try:"터키", currency_pronunciation_try:"리라", currency_name_pln:"폴란드", currency_pronunciation_pln:"즈워티", currency_name_czk:"체코", currency_pronunciation_czk:"코루나", currency_name_huf:"헝가리", currency_pronunciation_huf:"포린트", currency_name_bam:"보스니아", currency_pronunciation_bam:"마르카", currency_name_rsd:"세르비아", currency_pronunciation_rsd:"디나르", currency_name_mkd:"북마케도니아", currency_pronunciation_mkd:"데나르", currency_name_all:"알바니아", currency_pronunciation_all:"렉", currency_name_bgn:"불가리아", currency_pronunciation_bgn:"레프", currency_name_ron:"루마니아", currency_pronunciation_ron:"레우", currency_name_mdl:"몰도바", currency_pronunciation_mdl:"레우", currency_name_gel:"조지아", currency_pronunciation_gel:"라리", currency_name_nok:"노르웨이", currency_pronunciation_nok:"크로네", currency_name_sek:"스웨덴", currency_pronunciation_sek:"크로나", currency_name_dkk:"덴마크", currency_pronunciation_dkk:"크로네", currency_name_aud:"호주", currency_pronunciation_aud:"달러", currency_name_nzd:"뉴질랜드", currency_pronunciation_nzd:"달러", currency_name_aed:"UAE", currency_pronunciation_aed:"디르함", currency_name_ils:"이스라엘", currency_pronunciation_ils:"셰켈", currency_name_egp:"이집트", currency_pronunciation_egp:"파운드", currency_name_zar:"남아공", currency_pronunciation_zar:"랜드" },
-        en: { title: "Currency Converter", loading: "Loading rates...", last_updated: "Last Updated:", mode_expense: "Expense Sum", mode_converter: "Converter", tip_expense: "💡 How to use: The top currency is the sum's base. Drag the handle (☰) to reorder and enter calculations like `10+10-10%`!", tip_converter: "💡 Tip: Enter a value in one currency to convert all others.", error_message: "Failed to load exchange rates. Please try again later.", retry_button: "Try Again", total_sum: "Total Sum", reset_button: "Reset All Inputs", offline_mode: "Offline Mode", blog_link: "Visit my blog", copied: "Copied!", currency_name_krw:"South Korea", currency_pronunciation_krw:"Won", currency_name_jpy:"Japan", currency_pronunciation_jpy:"Yen", currency_name_cny:"China", currency_pronunciation_cny:"Yuan", currency_name_hkd:"Hong Kong", currency_pronunciation_hkd:"Dollar", currency_name_sgd:"Singapore", currency_pronunciation_sgd:"Dollar", currency_name_thb:"Thailand", currency_pronunciation_thb:"Baht", currency_name_vnd:"Vietnam", currency_pronunciation_vnd:"Dong", currency_name_idr:"Indonesia", currency_pronunciation_idr:"Rupiah", currency_name_php:"Philippines", currency_pronunciation_php:"Peso", currency_name_myr:"Malaysia", currency_pronunciation_myr:"Ringgit", currency_name_inr:"India", currency_pronunciation_inr:"Rupee", currency_name_khr:"Cambodia", currency_pronunciation_khr:"Riel", currency_name_lak:"Laos", currency_pronunciation_lak:"Kip", currency_name_usd:"United States", currency_pronunciation_usd:"Dollar", currency_name_cad:"Canada", currency_pronunciation_cad:"Dollar", currency_name_mxn:"Mexico", currency_pronunciation_mxn:"Peso", currency_name_brl:"Brazil", currency_pronunciation_brl:"Real", currency_name_ars:"Argentina", currency_pronunciation_ars:"Peso", currency_name_clp:"Chile", currency_pronunciation_clp:"Peso", currency_name_cop:"Colombia", currency_pronunciation_cop:"Peso", currency_name_pen:"Peru", currency_pronunciation_pen:"Sol", currency_name_eur:"Europe", currency_pronunciation_eur:"Euro", currency_name_gbp:"United Kingdom", currency_pronunciation_gbp:"Pound", currency_name_chf:"Switzerland", currency_pronunciation_chf:"Franc", currency_name_try:"Turkey", currency_pronunciation_try:"Lira", currency_name_pln:"Poland", currency_pronunciation_pln:"Złoty", currency_name_czk:"Czech Republic", currency_pronunciation_czk:"Koruna", currency_name_huf:"Hungary", currency_pronunciation_huf:"Forint", currency_name_bam:"Bosnia", currency_pronunciation_bam:"Mark", currency_name_rsd:"Serbia", currency_pronunciation_rsd:"Dinar", currency_name_mkd:"North Macedonia", currency_pronunciation_mkd:"Denar", currency_name_all:"Albania", currency_pronunciation_all:"Lek", currency_name_bgn:"Bulgaria", currency_pronunciation_bgn:"Lev", currency_name_ron:"Romania", currency_pronunciation_ron:"Leu", currency_name_mdl:"Moldova", currency_pronunciation_mdl:"Leu", currency_name_gel:"Georgia", currency_pronunciation_gel:"Lari", currency_name_nok:"Norway", currency_pronunciation_nok:"Krone", currency_name_sek:"Sweden", currency_pronunciation_sek:"Krona", currency_name_dkk:"Denmark", currency_pronunciation_dkk:"Krone", currency_name_aud:"Australia", currency_pronunciation_aud:"Dollar", currency_name_nzd:"New Zealand", currency_pronunciation_nzd:"Dollar", currency_name_aed:"UAE", currency_pronunciation_aed:"Dirham", currency_name_ils:"Israel", currency_pronunciation_ils:"Shekel", currency_name_egp:"Egypt", currency_pronunciation_egp:"Pound", currency_name_zar:"South Africa", currency_pronunciation_zar:"Rand" },
+        en: en_translations,
+        ja: { ...en_translations, title: "為替計算機", loading: "為替レートを読み込み中...", last_updated: "最終更新:", mode_expense: "経費合算", mode_converter: "為替変換", currency_name_jpy:"日本", currency_pronunciation_jpy:"円" },
+        zh: en_translations, es: en_translations, fr: en_translations, de: en_translations, ar: en_translations, ru: en_translations, ka: en_translations, vi: en_translations, th: en_translations, km: en_translations, pt: en_translations
     };
     const targetCurrencies = { 'KRW': { country: 'kr', name: '대한민국 원', symbol: '₩' }, 'JPY': { country: 'jp', name: '일본 엔', symbol: '¥' }, 'CNY': { country: 'cn', name: '중국 위안', symbol: '¥' }, 'HKD': { country: 'hk', name: '홍콩 달러', symbol: '$' }, 'SGD': { country: 'sg', name: '싱가포르 달러', symbol: '$' }, 'THB': { country: 'th', name: '태국 바트', symbol: '฿' }, 'VND': { country: 'vn', name: '베트남 동', symbol: '₫' }, 'IDR': { country: 'id', name: '인도네시아 루피아', symbol: 'Rp' }, 'PHP': { country: 'ph', name: '필리핀 페소', symbol: '₱' }, 'MYR': { country: 'my', name: '말레이시아 링깃', symbol: 'RM' }, 'INR': { country: 'in', name: '인도 루피', symbol: '₹' }, 'KHR': { country: 'kh', name: '캄보디아 리엘', symbol: '៛' }, 'LAK': { country: 'la', name: '라오스 킵', symbol: '₭' }, 'USD': { country: 'us', name: '미국 달러', symbol: '$' }, 'CAD': { country: 'ca', name: '캐나다 달러', symbol: '$' }, 'MXN': { country: 'mx', name: '멕시코 페소', symbol: '$' }, 'BRL': { country: 'br', name: '브라질 헤알', symbol: 'R$' }, 'ARS': { country: 'ar', name: '아르헨티나 페소', symbol: '$' }, 'CLP': { country: 'cl', name: '칠레 페소', symbol: '$' }, 'COP': { country: 'co', name: '콜롬비아 페소', symbol: '$' }, 'PEN': { country: 'pe', name: '페루 솔', symbol: 'S/.' }, 'EUR': { country: 'eu', name: '유럽 유로', symbol: '€' }, 'GBP': { country: 'gb', name: '영국 파운드', symbol: '£' }, 'CHF': { country: 'ch', name: '스위스 프랑', symbol: 'Fr' }, 'TRY': { country: 'tr', name: '터키 리라', symbol: '₺' }, 'PLN': { country: 'pl', name: '폴란드 즈워티', symbol: 'zł' }, 'CZK': { country: 'cz', name: '체코 코루나', symbol: 'Kč' }, 'HUF': { country: 'hu', name: '헝가리 포린트', symbol: 'Ft' }, 'BAM': { country: 'ba', name: '보스니아 마르카', symbol: 'KM' }, 'RSD': { country: 'rs', name: '세르비아 디나르', symbol: 'din' }, 'MKD': { country: 'mk', name: '북마케도니아 데나르', symbol: 'ден' }, 'ALL': { country: 'al', name: '알바니아 렉', symbol: 'L' }, 'BGN': { country: 'bg', name: '불가리아 레프', symbol: 'лв' }, 'RON': { country: 'ro', name: '루마니아 레우', symbol: 'lei' }, 'MDL': { country: 'md', name: '몰도바 레우', symbol: 'L' }, 'GEL': { country: 'ge', name: '조지아 라리', symbol: '₾' }, 'NOK': { country: 'no', name: '노르웨이 크로네', symbol: 'kr' }, 'SEK': { country: 'se', name: '스웨덴 크로나', symbol: 'kr' }, 'DKK': { country: 'dk', name: '덴마크 크로네', symbol: 'kr' }, 'AUD': { country: 'au', name: '호주 달러', symbol: '$' }, 'NZD': { country: 'nz', name: '뉴질랜드 달러', symbol: '$' }, 'AED': { country: 'ae', name: 'UAE 디르함', symbol: 'د.إ' }, 'ILS': { country: 'il', name: '이스라엘 셰켈', symbol: '₪' }, 'EGP': { country: 'eg', name: '이집트 파운드', symbol: 'E£' }, 'ZAR': { country: 'za', name: '남아공 랜드', symbol: 'R' }, };
 
@@ -332,12 +336,10 @@ document.addEventListener('DOMContentLoaded', () => {
             ? `<textarea class="autoresize-textarea currency-input w-full bg-white text-right font-semibold text-lg text-gray-800 rounded-md py-2 pl-8 pr-4 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" data-currency-code="${code}" placeholder="0" rows="1" aria-label="${currency.name} 입력"></textarea>`
             : `<input type="text" inputmode="decimal" class="currency-input w-full bg-white text-right font-semibold text-lg text-gray-800 rounded-md py-2 pl-8 pr-4 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" data-currency-code="${code}" placeholder="0.00" aria-label="${currency.name} 입력">`;
         
-        // --- [최종 수정] 고정 너비 컬럼 레이아웃 적용 ---
         card.innerHTML = `
             <div class="drag-handle p-2" role="button" tabindex="0">
                 <svg class="w-6 h-6 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
             </div>
-
             <div class="flex flex-col items-center w-14 flex-shrink-0 text-center">
                 <div class="flag-container">
                     <img src="https://flagcdn.com/w40/${currency.country}.png" alt="${code}" onerror="this.style.display='none'">
@@ -346,12 +348,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p class="text-xs text-gray-500 w-full truncate" data-translate-key="currency_name_${code.toLowerCase()}"></p>
                 </div>
             </div>
-
-            <div class="w-20 flex-shrink-0">
+            <div class="w-16 flex-shrink-0">
                 <p class="font-bold text-gray-800">${code}</p>
                 <p class="text-xs text-gray-500" data-translate-key="currency_pronunciation_${code.toLowerCase()}"></p>
             </div>
-
             <div class="relative flex-grow">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">${currency.symbol}</span>
                 ${inputElement}
@@ -363,7 +363,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const lang = currentLang;
         document.querySelectorAll('[data-translate-key]').forEach(el => {
             const key = el.dataset.translateKey;
-            el.textContent = translations[lang]?.[key] ?? translations['en']?.[key] ?? (el.dataset.translateKey.startsWith('currency_') ? '' : key);
+            el.textContent = translations[lang]?.[key] ?? translations['en']?.[key] ?? key;
         });
         if (lastUpdateTimeUTC) {
             const updateDate = new Date(lastUpdateTimeUTC);
@@ -388,9 +388,21 @@ document.addEventListener('DOMContentLoaded', () => {
         updateTotalAmount();
     }
 
+    // [수정] 콤마(,) 포맷팅을 위한 함수
+    function formatNumber(numStr) {
+        if (!numStr) return '';
+        const [integer, fraction] = numStr.split('.');
+        const formattedInteger = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        return fraction === undefined ? formattedInteger : `${formattedInteger}.${fraction}`;
+    }
+
     function registerDynamicEventListeners() {
         document.querySelectorAll('.currency-input').forEach(input => {
-            input.addEventListener('input', currentMode === 'expense' ? handleExpenseInput : handleConverterInput);
+            if (currentMode === 'expense') {
+                input.addEventListener('input', handleExpenseInput);
+            } else {
+                input.addEventListener('input', handleConverterInput);
+            }
         });
         addDragDropListeners();
     }
@@ -399,15 +411,31 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function handleConverterInput(e) {
         const sourceInput = e.target;
-        const sourceValue = parseFloat(sourceInput.value.replace(/,/g, ''));
-        if (isNaN(sourceValue) || sourceValue === 0) {
+        
+        // [수정] 입력값에서 콤마 제거 후 숫자 변환
+        const numericValue = parseFloat(sourceInput.value.replace(/,/g, ''));
+
+        // [수정] 입력과 동시에 콤마 포맷팅 (커서 위치 유지 포함)
+        const originalValue = sourceInput.value;
+        const cursorPosition = sourceInput.selectionStart;
+        const cleanValue = originalValue.replace(/[^0-9.]/g, '');
+        const formattedValue = formatNumber(cleanValue);
+        sourceInput.value = formattedValue;
+        const newCursorPosition = cursorPosition + (formattedValue.length - originalValue.length);
+        if(newCursorPosition >= 0) {
+             sourceInput.setSelectionRange(newCursorPosition, newCursorPosition);
+        }
+
+        if (isNaN(numericValue) || numericValue === 0) {
             document.querySelectorAll('.currency-input').forEach(i => { if (i !== sourceInput) i.value = ''; });
             return;
         }
-        const sourceValueInUSD = sourceValue / exchangeRates[sourceInput.dataset.currencyCode];
+
+        const sourceValueInUSD = numericValue / exchangeRates[sourceInput.dataset.currencyCode];
         document.querySelectorAll('.currency-input').forEach(input => {
             if (input !== sourceInput) {
                 const targetValue = sourceValueInUSD * exchangeRates[input.dataset.currencyCode];
+                // [수정] 다른 통화들도 소수점 2자리 + 콤마 포맷으로 표시
                 input.value = targetValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             }
         });
@@ -510,7 +538,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function evaluateExpression(str) {
         if (!str || !str.trim()) return 0;
         try {
-            const sanitized = str.replace(/[^-()\d/*+%.]/g, '').replace(/(\d*\.?\d+)%/g, '($1/100)');
+            // [수정] 콤마(,)가 포함된 계산식을 위해 제거 로직 추가
+            const sanitized = str.replace(/,/g, '').replace(/[^-()\d/*+%.]/g, '').replace(/(\d*\.?\d+)%/g, '($1/100)');
             return Function('"use strict";return (' + sanitized + ')')();
         } catch { return 0; }
     }
@@ -549,7 +578,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function copyTotalToClipboard() {
         const textToCopy = totalAmountDisplay.textContent;
         const textArea = document.createElement("textarea");
-        textArea.value = textToCopy.replace(/[^0-9.]/g, ''); // 숫자만 복사
+        textArea.value = textToCopy.replace(/[^0-9.]/g, '');
         document.body.appendChild(textArea);
         textArea.select();
         try {
