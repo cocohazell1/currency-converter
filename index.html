@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    
+    <!-- 웹 앱 설정을 위한 메타 태그 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="환율 계산기">
+    
+    <!-- 아이폰 홈 화면 아이콘 (180x180px 권장) -->
+    <link rel="apple-touch-icon" href="https://i.ibb.co/mRpP36p/currency-icon.png">
+
+    <title>환율 계산기</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f0f2f5;
+        }
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3b82f6;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1.2s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+        /* 드래그 앤 드롭 스타일 */
+        .draggable-item {
+            cursor: move;
+        }
+        .dragging {
+            opacity: 0.5;
+            background: #c7d2fe;
+        }
+        .drag-handle {
+            color: #9ca3af;
+            flex-shrink: 0;
+        }
+        .drag-handle:hover {
+            color: #374151;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+
+    <div class="w-full h-full max-w-lg bg-white rounded-none sm:rounded-2xl shadow-none sm:shadow-xl p-6 md:p-8">
+        <!-- 헤더 -->
+        <div class="text-center mb-8 pt-4">
+            <h1 class="text-3xl font-bold text-gray-800">양방향 환율 계산기</h1>
+            <p class="text-base text-gray-500 mt-2">유럽 및 발칸 반도 여행자용</p>
+        </div>
+
+        <!-- 로딩 인디케이터 -->
+        <div id="loader" class="flex justify-center items-center h-60">
+            <div class="loader"></div>
+        </div>
+        
+        <!-- 계산기 메인 -->
+        <div id="calculator" class="hidden">
+            <div id="currency-list" class="space-y-4">
+                <!-- 통화별 입력 필드가 여기에 동적으로 추가됩니다 -->
+            </div>
+            <div id="draggable-currency-list" class="space-y-4 mt-4">
+                 <!-- 드래그 가능한 통화 목록 -->
+            </div>
+
+            <!-- 정보 업데이트 시간 -->
+            <div class="text-center mt-8">
+                <p id="last-updated" class="text-xs text-gray-400">환율 정보 업데이트 중...</p>
+            </div>
+        </div>
+        
+         <!-- API 에러 메시지 -->
+        <div id="error-message" class="hidden text-center p-4 bg-red-100 text-red-700 rounded-lg">
+            <p>환율 정보를 불러오는 데 실패했습니다. 잠시 후 다시 시도해 주세요.</p>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const currencyList = document.getElementById('currency-list');
+            const draggableCurrencyList = document.getElementById('draggable-currency-list');
+            const lastUpdated = document.getElementById('last-updated');
+            const loader = document.getElementById('loader');
+            const calculator = document.getElementById('calculator');
+            const errorMessage = document.getElementById('error-message');
+
+            const targetCurrencies = {
+                'KRW': { country: 'kr', name: '대한민국 원', symbol: '₩', defaultValue: 10000 },
+                'USD': { country: 'us', name: '미국 달러', symbol: '$' },
+                'EUR': { country: 'eu', name: '유럽 유로', symbol: '€' },
+                'CHF': { country: 'ch', name: '스위스 프랑', symbol: 'Fr' },
+                'TRY': { country: 'tr', name: '터키 리라', symbol: '₺' },
+                'CZK': { country: 'cz', name: '체코 코루나', symbol: 'Kč' },
+                'HUF': { country: 'hu', name: '헝가리 포린트', symbol: 'Ft' },
+                'BAM': { country: 'ba', name: '보스니아 마르카', symbol: 'KM' },
+                'RSD': { country: 'rs', name: '세르비아 디나르', symbol: 'din' },
+                'MKD': { country: 'mk', name: '북마케도니아 데나르', symbol: 'ден' },
+                'ALL': { country: 'al', name: '알바니아 렉', symbol: 'L' },
+                'BGN': { country: 'bg', name: '불가리아 레프', symbol: 'лв' },
+                'RON': { country: 'ro', name: '루마니아 레우', symbol: 'lei' },
+                'MDL': { country: 'md', name: '몰도바 레우', symbol: 'L' },
+                'GEL': { country: 'ge', name: '조지아 라리', symbol: '₾' },
+            };
+            
+            let exchangeRates = {};
+
+            async function fetchRates() {
+                try {
+                    const response = await fetch('https://open.er-api.com/v6/latest/USD');
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    
+                    const data = await response.json();
+
+                    if (data.result === 'success') {
+                        exchangeRates = data.rates;
+                        buildCalculatorUI();
+                        addDragAndDropListeners();
+                        showCalculator();
+
+                        const krwInput = document.querySelector('input[data-currency-code="KRW"]');
+                        krwInput.value = formatNumber(targetCurrencies.KRW.defaultValue, 'KRW');
+                        calculateAndDisplay('KRW', targetCurrencies.KRW.defaultValue);
+                    } else {
+                        showError();
+                    }
+                } catch (error) {
+                    console.error('Error fetching exchange rates:', error);
+                    showError();
+                }
+            }
+            
+            function createCurrencyCard(code) {
+                const currency = targetCurrencies[code];
+                const card = document.createElement('div');
+                const isDraggable = code !== 'KRW';
+
+                card.className = `flex items-center gap-3 p-3 bg-gray-50 rounded-xl border-2 border-transparent transition-all duration-300 ${isDraggable ? 'draggable-item' : ''}`;
+                 if(isDraggable) {
+                    card.setAttribute('draggable', 'true');
+                 }
+
+                card.innerHTML = `
+                    ${isDraggable ? `
+                        <svg class="w-6 h-6 drag-handle" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                    ` : '<div class="w-6 h-6"></div>'}
+                    <img src="https://flagcdn.com/w40/${currency.country}.png" alt="${currency.name} 국기" class="w-10 h-10 rounded-full shadow-sm flex-shrink-0" onerror="this.style.display='none'">
+                    <div class="flex-grow">
+                        <p class="font-bold text-gray-800">${code}</p>
+                        <p class="text-sm text-gray-500">${currency.name}</p>
+                    </div>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">${currency.symbol}</span>
+                        <input type="text" 
+                               inputmode="decimal"
+                               class="currency-input w-full bg-white text-right font-semibold text-lg text-gray-800 rounded-md py-2 pl-8 pr-4 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               data-currency-code="${code}" 
+                               placeholder="0.00">
+                    </div>
+                `;
+                return card;
+            }
+
+            function buildCalculatorUI() {
+                currencyList.innerHTML = '';
+                draggableCurrencyList.innerHTML = '';
+
+                const displayOrder = ['KRW', 'USD', 'EUR', 'CHF', 'TRY', 'CZK', 'HUF', 'BAM', 'RSD', 'MKD', 'ALL', 'BGN', 'RON', 'MDL', 'GEL'];
+
+                displayOrder.forEach(code => {
+                    if (!targetCurrencies[code]) return;
+                    
+                    const card = createCurrencyCard(code);
+                    if (code === 'KRW') {
+                        currencyList.appendChild(card); 
+                    } else {
+                        draggableCurrencyList.appendChild(card); 
+                    }
+                });
+                
+                document.querySelectorAll('.currency-input').forEach(input => {
+                    input.addEventListener('input', handleInputChange);
+                    input.addEventListener('focus', (e) => e.target.select());
+                });
+
+                lastUpdated.textContent = `마지막 업데이트: ${new Date().toLocaleString('ko-KR')}`;
+            }
+
+            function addDragAndDropListeners() {
+                const draggables = document.querySelectorAll('.draggable-item');
+
+                draggables.forEach(draggable => {
+                    draggable.addEventListener('dragstart', () => {
+                        draggable.classList.add('dragging');
+                    });
+                    draggable.addEventListener('dragend', () => {
+                        draggable.classList.remove('dragging');
+                    });
+                });
+
+                draggableCurrencyList.addEventListener('dragover', e => {
+                    e.preventDefault();
+                    const afterElement = getDragAfterElement(draggableCurrencyList, e.clientY);
+                    const dragging = document.querySelector('.dragging');
+                    if (dragging) {
+                        if (afterElement == null) {
+                            draggableCurrencyList.appendChild(dragging);
+                        } else {
+                            draggableCurrencyList.insertBefore(dragging, afterElement);
+                        }
+                    }
+                });
+            }
+
+            function getDragAfterElement(container, y) {
+                const draggableElements = [...container.querySelectorAll('.draggable-item:not(.dragging)')];
+
+                return draggableElements.reduce((closest, child) => {
+                    const box = child.getBoundingClientRect();
+                    const offset = y - box.top - box.height / 2;
+                    if (offset < 0 && offset > closest.offset) {
+                        return { offset: offset, element: child };
+                    } else {
+                        return closest;
+                    }
+                }, { offset: Number.NEGATIVE_INFINITY }).element;
+            }
+
+            function handleInputChange(event) {
+                const sourceInput = event.target;
+                let sourceValue = sourceInput.value.replace(/,/g, ''); 
+                if (isNaN(parseFloat(sourceValue)) && sourceValue !== '') {
+                    sourceValue = sourceValue.replace(/[^\d.]/g, '');
+                }
+                const sourceCode = sourceInput.dataset.currencyCode;
+                calculateAndDisplay(sourceCode, parseFloat(sourceValue), sourceInput);
+            }
+
+            function calculateAndDisplay(sourceCode, sourceValue, activeInput = null) {
+                if (isNaN(sourceValue) || sourceValue === 0) {
+                    clearAllInputs(activeInput);
+                    if (activeInput) {
+                       activeInput.value = '';
+                    }
+                    return;
+                }
+
+                const usdValue = sourceValue / exchangeRates[sourceCode];
+
+                document.querySelectorAll('.currency-input').forEach(input => {
+                    const targetCode = input.dataset.currencyCode;
+                    if (input === activeInput) return;
+                    const targetValue = usdValue * exchangeRates[targetCode];
+                    input.value = formatNumber(targetValue, targetCode);
+                });
+            }
+
+            function clearAllInputs(skipInput = null) {
+                document.querySelectorAll('.currency-input').forEach(input => {
+                    if (input !== skipInput) {
+                        input.value = '';
+                    }
+                });
+            }
+            
+            function formatNumber(num, code) {
+                const decimalPlaces = 2;
+                return num.toLocaleString('en-US', {
+                    minimumFractionDigits: decimalPlaces,
+                    maximumFractionDigits: decimalPlaces,
+                });
+            }
+
+            function showCalculator() {
+                loader.classList.add('hidden');
+                errorMessage.classList.add('hidden');
+                calculator.classList.remove('hidden');
+            }
+            
+            function showError() {
+                loader.classList.add('hidden');
+                calculator.classList.add('hidden');
+                errorMessage.classList.remove('hidden');
+            }
+
+            fetchRates();
+        });
+    </script>
+
+</body>
+</html>
