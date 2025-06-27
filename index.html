@@ -11,6 +11,10 @@
     
     <!-- 아이폰 홈 화면 아이콘 -->
     <link rel="apple-touch-icon" href="https://i.ibb.co/mRpP36p/currency-icon.png">
+    
+    <!-- Google AdSense 스크립트 (나중에 채워넣을 부분) -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=YOUR_ADSENSE_CLIENT_ID"
+     crossorigin="anonymous"></script>
 
     <title>듀얼 모드 환율 계산기</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -65,6 +69,20 @@
             border-bottom: 1px solid #e5e7eb;
             padding-bottom: 1rem;
             margin-bottom: 1rem;
+        }
+        /* 광고 컨테이너 스타일 */
+        .ad-container {
+            min-height: 100px; /* 광고 로딩 전 최소 높이 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f3f4f6;
+            border-radius: 0.75rem;
+            color: #9ca3af;
+            font-size: 0.875rem;
+            text-align: center;
+            margin: 1rem 0;
+            width: 100%;
         }
     </style>
 </head>
@@ -165,6 +183,7 @@
             let currentMode = 'expense';
             let currentLang = 'ko';
             let lastUpdateTimeUTC;
+            let currencyOrder = Object.keys(targetCurrencies);
 
             async function fetchRates() {
                 try {
@@ -186,6 +205,7 @@
             function setLanguage(lang) {
                 currentLang = lang;
                 localStorage.setItem('preferredLanguage', lang);
+                languageSelector.value = lang;
                 document.documentElement.lang = lang;
                 document.body.dir = lang === 'ar' ? 'rtl' : 'ltr';
                 document.querySelectorAll('[data-translate-key]').forEach(el => {
@@ -220,6 +240,20 @@
             
             function addModeSwitchListeners() { modeExpenseBtn.addEventListener('click', () => setMode('expense')); modeConverterBtn.addEventListener('click', () => setMode('converter')); }
             
+            function createAdPlaceholder() {
+                const adContainer = document.createElement('div');
+                adContainer.className = 'ad-container';
+                adContainer.innerHTML = `
+                    <ins class="adsbygoogle needs-ad-push"
+                         style="display:block"
+                         data-ad-format="auto"
+                         data-full-width-responsive="true"
+                         data-ad-client="YOUR_ADSENSE_CLIENT_ID"
+                         data-ad-slot="YOUR_AD_SLOT_ID"></ins>
+                `;
+                return adContainer;
+            }
+
             function createCurrencyCard(code) {
                 const currency = targetCurrencies[code]; const card = document.createElement('div');
                 const inputElement = currentMode === 'expense'
@@ -232,10 +266,14 @@
             
             function buildCalculatorUI() {
                 currencyListContainer.innerHTML = ''; 
-                const displayOrder = Array.from(currencyListContainer.querySelectorAll('.currency-input')).map(input => input.dataset.currencyCode);
-                const finalOrder = displayOrder.length > 0 ? displayOrder : Object.keys(targetCurrencies);
+                const finalOrder = currencyOrder;
                 
-                finalOrder.forEach(code => { currencyListContainer.appendChild(createCurrencyCard(code)); });
+                finalOrder.forEach((code, index) => {
+                    currencyListContainer.appendChild(createCurrencyCard(code));
+                    if (currentMode === 'expense' && (index === 5 || index === 15)) {
+                        currencyListContainer.appendChild(createAdPlaceholder());
+                    }
+                });
                 
                 document.querySelectorAll('.currency-input').forEach(input => {
                     if(currentMode === 'expense') { input.addEventListener('input', (e) => { updateTotalAmount(); autoResizeTextarea(e.target); }); }
@@ -245,18 +283,73 @@
                 if (currentMode === 'expense') { 
                     resetButton.onclick = () => { document.querySelectorAll('.currency-input').forEach(input => { input.value = ''; autoResizeTextarea(input); }); updateTotalAmount(); };
                 }
+                
+                // 광고 스크립트 실행 (개선된 방식)
+                requestAnimationFrame(() => {
+                    document.querySelectorAll('.adsbygoogle.needs-ad-push').forEach(ad => {
+                        try {
+                            (adsbygoogle = window.adsbygoogle || []).push({});
+                            ad.classList.remove('needs-ad-push');
+                        } catch (e) {
+                            if(ad.parentElement) ad.parentElement.style.display = 'none';
+                            console.error("AdSense push error:", e);
+                        }
+                    });
+                });
+
                 updateBaseRateDisplay();
             }
             
             function autoResizeTextarea(textarea) { if (textarea.tagName && textarea.tagName.toLowerCase() === 'textarea') { textarea.style.height = 'auto'; textarea.style.height = textarea.scrollHeight + 'px'; } }
             
             function addDragAndDropListeners() {
-                let draggingItem = null; const container = document.getElementById('currency-list'); if (!container) return;
-                const onDragMove = (clientY) => { if (!draggingItem) return; const afterElement = getDragAfterElement(container, clientY); if (afterElement == null) container.appendChild(draggingItem); else container.insertBefore(draggingItem, afterElement); };
-                const onDragEnd = () => { if (!draggingItem) return; draggingItem.classList.remove('dragging'); draggingItem = null; document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp); document.removeEventListener('touchmove', onTouchMove); document.removeEventListener('touchend', onTouchEnd); updateBaseRateDisplay(); updateTotalAmount(); }; 
-                const onMouseMove = (e) => onDragMove(e.clientY); const onMouseUp = () => onDragEnd();
-                const onTouchMove = (e) => { e.preventDefault(); onDragMove(e.touches[0].clientY); }; const onTouchEnd = () => onDragEnd();
-                container.querySelectorAll('.drag-handle').forEach(handle => { const item = handle.closest('.draggable-item'); if(!item) return; handle.addEventListener('mousedown', (e) => { draggingItem = item; draggingItem.classList.add('dragging'); document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onMouseUp); }); handle.addEventListener('touchstart', (e) => { draggingItem = item; draggingItem.classList.add('dragging'); document.addEventListener('touchmove', onTouchMove, { passive: false }); document.addEventListener('touchend', onTouchEnd); }); });
+                const container = document.getElementById('currency-list');
+                if (!container) return;
+                
+                let draggingEl = null;
+
+                function onPointerDown(e) {
+                    const handle = e.target.closest('.drag-handle');
+                    if (!handle) return;
+                    draggingEl = handle.closest('.draggable-item');
+                    if (!draggingEl) return;
+                    draggingEl.classList.add('dragging');
+                    if (e.type === 'mousedown') {
+                        document.addEventListener('mousemove', onPointerMove);
+                        document.addEventListener('mouseup', onPointerUp);
+                    } else { // touchstart
+                        document.addEventListener('touchmove', onPointerMove, { passive: false });
+                        document.addEventListener('touchend', onPointerUp);
+                    }
+                }
+
+                function onPointerMove(e) {
+                    if (!draggingEl) return;
+                    e.preventDefault();
+                    const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+                    const afterElement = getDragAfterElement(container, clientY);
+                    if (afterElement) {
+                        container.insertBefore(draggingEl, afterElement);
+                    } else {
+                        container.appendChild(draggingEl);
+                    }
+                }
+
+                function onPointerUp() {
+                    if (!draggingEl) return;
+                    draggingEl.classList.remove('dragging');
+                    draggingEl = null;
+                    document.removeEventListener('mousemove', onPointerMove);
+                    document.removeEventListener('mouseup', onPointerUp);
+                    document.removeEventListener('touchmove', onPointerMove);
+                    document.removeEventListener('touchend', onPointerUp);
+                    currencyOrder = Array.from(container.querySelectorAll('.draggable-item')).map(item => item.querySelector('.currency-input').dataset.currencyCode);
+                    updateBaseRateDisplay();
+                    updateTotalAmount();
+                }
+                
+                container.addEventListener('mousedown', onPointerDown);
+                container.addEventListener('touchstart', onPointerDown, { passive: true });
             }
             
             function getDragAfterElement(container, y) { const draggableElements = [...container.querySelectorAll('.draggable-item:not(.dragging)')]; return draggableElements.reduce((closest, child) => { const box = child.getBoundingClientRect(); const offset = y - box.top - box.height / 2; if (offset < 0 && offset > closest.offset) { return { offset: offset, element: child }; } else { return closest; } }, { offset: Number.NEGATIVE_INFINITY }).element; }
@@ -269,6 +362,7 @@
                 const baseCode = firstCardInput.dataset.currencyCode;
                 let quoteCode = 'USD';
                 if (baseCode === 'USD') quoteCode = 'EUR';
+                if (!exchangeRates[quoteCode] || !exchangeRates[baseCode]) return;
                 const rate = exchangeRates[quoteCode] / exchangeRates[baseCode];
                 baseRateDisplay.textContent = `1 ${baseCode} = ${rate.toFixed(4)} ${quoteCode}`;
             }
@@ -283,6 +377,7 @@
                     const code = input.dataset.currencyCode; const value = evaluateExpression(input.value);
                     if (!isNaN(value) && value > 0) { if (exchangeRates[code]) { totalUSD += value / exchangeRates[code]; } }
                 });
+                if (!exchangeRates[baseCurrencyCode]) return;
                 const totalInBaseCurrency = totalUSD * exchangeRates[baseCurrencyCode];
                 const baseSymbol = targetCurrencies[baseCurrencyCode].symbol;
                 totalAmountDisplay.textContent = `${baseSymbol} ${Math.round(totalInBaseCurrency).toLocaleString('ko-KR')}`;
@@ -292,7 +387,7 @@
                 const sourceInput = event.target; const sourceCode = sourceInput.dataset.currencyCode; const sourceValue = parseFloat(sourceInput.value.replace(/,/g, ''));
                 if(isNaN(sourceValue)) { document.querySelectorAll('.currency-input').forEach(input => { if(input !== sourceInput) input.value = ''; }); return; }
                 const sourceValueInUSD = sourceValue / exchangeRates[sourceCode];
-                document.querySelectorAll('.currency-input').forEach(input => { if(input !== sourceInput) { const targetCode = input.dataset.currencyCode; const targetValue = sourceValueInUSD * exchangeRates[targetCode]; input.value = targetValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}); } });
+                document.querySelectorAll('.currency-input').forEach(input => { if(input !== sourceInput) { const targetCode = input.dataset.currencyCode; if(!exchangeRates[targetCode]) return; const targetValue = sourceValueInUSD * exchangeRates[targetCode]; input.value = targetValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}); } });
             }
             
             function showCalculator() { loader.classList.add('hidden'); errorMessage.classList.add('hidden'); calculator.classList.remove('hidden'); }
