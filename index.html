@@ -16,7 +16,7 @@
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=YOUR_ADSENSE_CLIENT_ID"
      crossorigin="anonymous"></script>
 
-    <title>듀얼 모드 환율 계산기</title>
+    <title>환율 계산기</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&family=Cairo:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -61,7 +61,7 @@
             color: #4b5563;
         }
         /* 상단 고정 스타일 (경비 합산 모드) */
-        #currency-list.expense-mode > .draggable-item:first-child {
+        #currency-list.expense-mode > .currency-item:first-child {
             position: sticky;
             top: 0;
             z-index: 10;
@@ -92,7 +92,7 @@
         <div id="main-content" class="p-6 md:p-8 pb-32"> <!-- 하단 합계 영역을 위한 패딩 추가 -->
             <!-- 헤더 -->
             <div class="relative text-center mb-4 pt-4">
-                <h1 id="app-title" class="text-3xl font-bold text-gray-800" data-translate-key="title">듀얼 모드 계산기</h1>
+                <h1 id="app-title" class="text-3xl font-bold text-gray-800" data-translate-key="title">환율 계산기</h1>
                 <div id="rate-info" class="text-sm text-gray-600 my-3">
                     <p id="base-rate-display">1 USD = 0.00 KRW</p>
                     <div class="flex justify-center items-center gap-2 mt-1">
@@ -165,14 +165,14 @@
             const languageSelector = document.getElementById('language-selector');
 
             const translations = {
-                ko: { title: "듀얼 모드 계산기", last_updated: "최종 업데이트:", mode_expense: "경비 합산", mode_converter: "환율 변환", tip_expense: "💡 사용법: 맨 위 통화가 합계 기준입니다. 손잡이(☰)를 끌어 순서를 바꾸고, `10+10-10%`처럼 계산식을 입력하세요!", tip_converter: "💡 팁: 한 통화에 값을 입력하면 나머지가 모두 변환됩니다.", error_message: "환율 정보를 불러오는 데 실패했습니다. 잠시 후 다시 시도해 주세요.", total_sum: "총 합계", reset_button: "모든 입력 초기화" },
-                en: { title: "Dual Mode Calculator", last_updated: "Last Updated:", mode_expense: "Expense Sum", mode_converter: "Converter", tip_expense: "💡 How to use: The top currency is the sum's base. Drag the handle (☰) to reorder and enter calculations like `10+10-10%`!", tip_converter: "💡 Tip: Enter a value in one currency to convert all others.", error_message: "Failed to load exchange rates. Please try again later.", total_sum: "Total Sum", reset_button: "Reset All Inputs" },
-                ja: { title: "デュアルモード計算機", last_updated: "最終更新:", mode_expense: "経費合算", mode_converter: "為替変換", tip_expense: "💡使い方: 一番上の通貨が合計の基準です。ハンドル(☰)をドラッグして順序を変え、`10+10-10%`のように計算式を入力してください！", tip_converter: "💡ヒント：一つの通貨に値を入力すると、他がすべて変換されます。", error_message: "為替レートの読み込みに失敗しました。後でもう一度お試しください。", total_sum: "合計", reset_button: "すべての入力をリセット" },
-                zh: { title: "双模式计算器", last_updated: "最后更新:", mode_expense: "费用合计", mode_converter: "汇率换算", tip_expense: "💡 使用方法: 最上方的货币是总计的基准。拖动把手(☰)重新排序，并像 `10+10-10%` 一样输入计算！", tip_converter: "💡 提示：在一个货币中输入一个值，所有其他货币都会转换。", error_message: "加载汇率失败。请稍后再试。", total_sum: "总计", reset_button: "重置所有输入" },
-                es: { title: "Calculadora Modo Dual", last_updated: "Última actualización:", mode_expense: "Suma de Gastos", mode_converter: "Convertidor", tip_expense: "💡 Cómo usar: La moneda superior es la base de la suma. ¡Arrastra el asa (☰) para reordenar e introduce cálculos como `10+10-10%`!", tip_converter: "💡 Consejo: Introduce un valor en una moneda para convertir todas las demás.", error_message: "Error al cargar las tasas de cambio. Por favor, inténtalo de nuevo más tarde.", total_sum: "Suma Total", reset_button: "Restablecer Todo" },
-                fr: { title: "Calculatrice Double Mode", last_updated: "Dernière mise à jour:", mode_expense: "Somme des Dépenses", mode_converter: "Convertisseur", tip_expense: "💡 Comment utiliser : La devise du haut est la base de la somme. Faites glisser la poignée (☰) pour réorganiser et entrez des calculs comme `10+10-10%` !", tip_converter: "💡 Astuce : Entrez une valeur dans une devise pour convertir toutes les autres.", error_message: "Échec du chargement des taux de change. Veuillez réessayer plus tard.", total_sum: "Somme Totale", reset_button: "Réinitialiser Tout" },
-                de: { title: "Dual-Modus-Rechner", last_updated: "Letzte Aktualisierung:", mode_expense: "Ausgabensumme", mode_converter: "Umrechner", tip_expense: "💡 Anleitung: Die oberste Währung ist die Basis für die Summe. Ziehen Sie den Griff (☰), um die Reihenfolge zu ändern, und geben Sie Berechnungen wie `10+10-10%` ein!", tip_converter: "💡 Tipp: Geben Sie einen Wert in einer Währung ein, um alle anderen umzurechnen.", error_message: "Fehler beim Laden der Wechselkurse. Bitte versuchen Sie es später erneut.", total_sum: "Gesamtsumme", reset_button: "Alles zurücksetzen" },
-                ar: { title: "آلة حاسبة بوضع مزدوج", last_updated: "آخر تحديث:", mode_expense: "مجموع المصاريف", mode_converter: "محول العملات", tip_expense: "💡 طريقة الاستخدام: العملة العلوية هي أساس المجموع. اسحب المقبض (☰) لإعادة الترتيب وأدخل حسابات مثل `10+10-10%`!", tip_converter: "💡 نصيحة: أدخل قيمة بعملة واحدة لتحويل جميع العملات الأخرى.", error_message: "فشل تحميل أسعار الصرف. يرجى المحاولة مرة أخرى في وقت لاحق.", total_sum: "المجموع الإجمالي", reset_button: "إعادة تعيين الكل" },
+                ko: { title: "환율 계산기", last_updated: "최종 업데이트:", mode_expense: "경비 합산", mode_converter: "환율 변환", tip_expense: "💡 사용법: 맨 위 통화가 합계 기준입니다. 화살표(▲▼)로 순서를 바꾸고, `10+10-10%`처럼 계산식을 입력하세요!", tip_converter: "💡 팁: 한 통화에 값을 입력하면 나머지가 모두 변환됩니다.", error_message: "환율 정보를 불러오는 데 실패했습니다. 잠시 후 다시 시도해 주세요.", total_sum: "총 합계", reset_button: "모든 입력 초기화" },
+                en: { title: "Currency Converter", last_updated: "Last Updated:", mode_expense: "Expense Sum", mode_converter: "Converter", tip_expense: "💡 How to use: The top currency is the sum's base. Use arrows (▲▼) to reorder and enter calculations like `10+10-10%`!", tip_converter: "💡 Tip: Enter a value in one currency to convert all others.", error_message: "Failed to load exchange rates. Please try again later.", total_sum: "Total Sum", reset_button: "Reset All Inputs" },
+                ja: { title: "為替レート計算機", last_updated: "最終更新:", mode_expense: "経費合算", mode_converter: "為替変換", tip_expense: "💡使い方: 一番上の通貨が合計の基準です。矢印(▲▼)で順序を変え、`10+10-10%`のように計算式を入力してください！", tip_converter: "💡ヒント：一つの通貨に値を入力すると、他がすべて変換されます。", error_message: "為替レートの読み込みに失敗しました。後でもう一度お試しください。", total_sum: "合計", reset_button: "すべての入力をリセット" },
+                zh: { title: "汇率计算器", last_updated: "最后更新:", mode_expense: "费用合计", mode_converter: "汇率换算", tip_expense: "💡 使用方法: 最上方的货币是总计的基准。使用箭头(▲▼)重新排序，并像 `10+10-10%` 一样输入计算！", tip_converter: "💡 提示：在一个货币中输入一个值，所有其他货币都会转换。", error_message: "加载汇率失败。请稍后再试。", total_sum: "总计", reset_button: "重置所有输入" },
+                es: { title: "Conversor de Divisas", last_updated: "Última actualización:", mode_expense: "Suma de Gastos", mode_converter: "Convertidor", tip_expense: "💡 Cómo usar: La moneda superior es la base de la suma. ¡Usa las flechas (▲▼) para reordenar e introduce cálculos como `10+10-10%`!", tip_converter: "💡 Consejo: Introduce un valor en una moneda para convertir todas las demás.", error_message: "Error al cargar las tasas de cambio. Por favor, inténtalo de nuevo más tarde.", total_sum: "Suma Total", reset_button: "Restablecer Todo" },
+                fr: { title: "Convertisseur de Devises", last_updated: "Dernière mise à jour:", mode_expense: "Somme des Dépenses", mode_converter: "Convertisseur", tip_expense: "💡 Comment utiliser : La devise du haut est la base de la somme. Utilisez les flèches (▲▼) pour réorganiser et entrez des calculs comme `10+10-10%` !", tip_converter: "💡 Astuce : Entrez une valeur dans une devise pour convertir toutes les autres.", error_message: "Échec du chargement des taux de change. Veuillez réessayer plus tard.", total_sum: "Somme Totale", reset_button: "Réinitialiser Tout" },
+                de: { title: "Währungsrechner", last_updated: "Letzte Aktualisierung:", mode_expense: "Ausgabensumme", mode_converter: "Umrechner", tip_expense: "💡 Anleitung: Die oberste Währung ist die Basis für die Summe. Verwenden Sie die Pfeile (▲▼), um die Reihenfolge zu ändern, und geben Sie Berechnungen wie `10+10-10%` ein!", tip_converter: "💡 Tipp: Geben Sie einen Wert in einer Währung ein, um alle anderen umzurechnen.", error_message: "Fehler beim Laden der Wechselkurse. Bitte versuchen Sie es später erneut.", total_sum: "Gesamtsumme", reset_button: "Alles zurücksetzen" },
+                ar: { title: "محول العملات", last_updated: "آخر تحديث:", mode_expense: "مجموع المصاريف", mode_converter: "محول العملات", tip_expense: "💡 طريقة الاستخدام: العملة العلوية هي أساس المجموع. استخدم الأسهم (▲▼) لإعادة الترتيب وأدخل حسابات مثل `10+10-10%`!", tip_converter: "💡 نصيحة: أدخل قيمة بعملة واحدة لتحويل جميع العملات الأخرى.", error_message: "فشل تحميل أسعار الصرف. يرجى المحاولة مرة أخرى في وقت لاحق.", total_sum: "المجموع الإجمالي", reset_button: "إعادة تعيين الكل" },
             };
             
             const targetCurrencies = {
@@ -222,7 +222,7 @@
             
             languageSelector.addEventListener('change', (e) => setLanguage(e.target.value));
             
-            function setMode(newMode) { currentMode = newMode; buildCalculatorUI(); addDragAndDropListeners(); updateModeUI(); }
+            function setMode(newMode) { currentMode = newMode; buildCalculatorUI(); addMoveListeners(); updateModeUI(); }
             
             function updateModeUI() {
                 currencyListContainer.className = currentMode === 'expense' ? 'expense-mode space-y-4' : 'converter-mode space-y-4';
@@ -243,14 +243,7 @@
             function createAdPlaceholder() {
                 const adContainer = document.createElement('div');
                 adContainer.className = 'ad-container';
-                adContainer.innerHTML = `
-                    <ins class="adsbygoogle needs-ad-push"
-                         style="display:block"
-                         data-ad-format="auto"
-                         data-full-width-responsive="true"
-                         data-ad-client="YOUR_ADSENSE_CLIENT_ID"
-                         data-ad-slot="YOUR_AD_SLOT_ID"></ins>
-                `;
+                adContainer.innerHTML = `<ins class="adsbygoogle needs-ad-push" style="display:block" data-ad-format="auto" data-full-width-responsive="true" data-ad-client="YOUR_ADSENSE_CLIENT_ID" data-ad-slot="YOUR_AD_SLOT_ID"></ins>`;
                 return adContainer;
             }
 
@@ -259,8 +252,8 @@
                 const inputElement = currentMode === 'expense'
                     ? `<textarea class="autoresize-textarea currency-input w-full bg-white text-right font-semibold text-lg text-gray-800 rounded-md py-2 pl-8 pr-4 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" data-currency-code="${code}" placeholder="0" rows="1"></textarea>`
                     : `<input type="text" inputmode="decimal" class="currency-input w-full bg-white text-right font-semibold text-lg text-gray-800 rounded-md py-2 pl-8 pr-4 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500" data-currency-code="${code}" placeholder="0.00">`;
-                card.className = `flex items-center gap-3 p-3 bg-gray-50 rounded-xl border-2 border-transparent transition-shadow duration-300 draggable-item`;
-                card.innerHTML = `<div class="drag-handle"><svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg></div><img src="https://flagcdn.com/w40/${currency.country}.png" alt="${currency.name} 국기" class="w-10 h-10 rounded-full shadow-sm" onerror="this.style.display='none'"><div class="flex-grow"><p class="font-bold text-gray-800">${code}</p><p class="text-sm text-gray-500">${currency.name}</p></div><div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">${currency.symbol}</span>${inputElement}</div>`;
+                card.className = `flex items-center gap-3 p-3 bg-gray-50 rounded-xl border-2 border-transparent transition-shadow duration-300 currency-item`;
+                card.innerHTML = `<div class="flex flex-col justify-center w-8"><button class="move-up-btn p-1 rounded-full hover:bg-gray-200"><svg class="w-4 h-4 text-gray-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 15l7-7 7 7"></path></svg></button><button class="move-down-btn p-1 rounded-full hover:bg-gray-200"><svg class="w-4 h-4 text-gray-500 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg></button></div><img src="https://flagcdn.com/w40/${currency.country}.png" alt="${currency.name} 국기" class="w-10 h-10 rounded-full shadow-sm" onerror="this.style.display='none'"><div class="flex-grow"><p class="font-bold text-gray-800">${code}</p><p class="text-sm text-gray-500">${currency.name}</p></div><div class="relative"><span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-lg">${currency.symbol}</span>${inputElement}</div>`;
                 return card;
             }
             
@@ -284,7 +277,6 @@
                     resetButton.onclick = () => { document.querySelectorAll('.currency-input').forEach(input => { input.value = ''; autoResizeTextarea(input); }); updateTotalAmount(); };
                 }
                 
-                // 광고 스크립트 실행 (개선된 방식)
                 requestAnimationFrame(() => {
                     document.querySelectorAll('.adsbygoogle.needs-ad-push').forEach(ad => {
                         try {
@@ -296,63 +288,43 @@
                         }
                     });
                 });
-
                 updateBaseRateDisplay();
             }
             
             function autoResizeTextarea(textarea) { if (textarea.tagName && textarea.tagName.toLowerCase() === 'textarea') { textarea.style.height = 'auto'; textarea.style.height = textarea.scrollHeight + 'px'; } }
             
-            function addDragAndDropListeners() {
-                const container = document.getElementById('currency-list');
-                if (!container) return;
-                
-                let draggingEl = null;
+            function addMoveListeners() {
+                currencyListContainer.addEventListener('click', (e) => {
+                    const upButton = e.target.closest('.move-up-btn');
+                    const downButton = e.target.closest('.move-down-btn');
 
-                function onPointerDown(e) {
-                    const handle = e.target.closest('.drag-handle');
-                    if (!handle) return;
-                    draggingEl = handle.closest('.draggable-item');
-                    if (!draggingEl) return;
-                    draggingEl.classList.add('dragging');
-                    if (e.type === 'mousedown') {
-                        document.addEventListener('mousemove', onPointerMove);
-                        document.addEventListener('mouseup', onPointerUp);
-                    } else { // touchstart
-                        document.addEventListener('touchmove', onPointerMove, { passive: false });
-                        document.addEventListener('touchend', onPointerUp);
+                    if (!upButton && !downButton) return;
+
+                    const currentCard = e.target.closest('.currency-item');
+                    if (!currentCard) return;
+
+                    if (upButton) {
+                        let previousCard = currentCard.previousElementSibling;
+                        while(previousCard && previousCard.classList.contains('ad-container')) {
+                            previousCard = previousCard.previousElementSibling;
+                        }
+                        if (previousCard) {
+                            currencyListContainer.insertBefore(currentCard, previousCard);
+                        }
+                    } else if (downButton) {
+                        let nextCard = currentCard.nextElementSibling;
+                         while(nextCard && nextCard.classList.contains('ad-container')) {
+                            nextCard = nextCard.nextElementSibling;
+                        }
+                        if (nextCard) {
+                            currencyListContainer.insertBefore(nextCard, currentCard);
+                        }
                     }
-                }
-
-                function onPointerMove(e) {
-                    if (!draggingEl) return;
-                    e.preventDefault();
-                    const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
-                    const afterElement = getDragAfterElement(container, clientY);
-                    if (afterElement) {
-                        container.insertBefore(draggingEl, afterElement);
-                    } else {
-                        container.appendChild(draggingEl);
-                    }
-                }
-
-                function onPointerUp() {
-                    if (!draggingEl) return;
-                    draggingEl.classList.remove('dragging');
-                    draggingEl = null;
-                    document.removeEventListener('mousemove', onPointerMove);
-                    document.removeEventListener('mouseup', onPointerUp);
-                    document.removeEventListener('touchmove', onPointerMove);
-                    document.removeEventListener('touchend', onPointerUp);
-                    currencyOrder = Array.from(container.querySelectorAll('.draggable-item')).map(item => item.querySelector('.currency-input').dataset.currencyCode);
+                    currencyOrder = Array.from(currencyListContainer.querySelectorAll('.currency-item')).map(item => item.querySelector('.currency-input').dataset.currencyCode);
                     updateBaseRateDisplay();
                     updateTotalAmount();
-                }
-                
-                container.addEventListener('mousedown', onPointerDown);
-                container.addEventListener('touchstart', onPointerDown, { passive: true });
+                });
             }
-            
-            function getDragAfterElement(container, y) { const draggableElements = [...container.querySelectorAll('.draggable-item:not(.dragging)')]; return draggableElements.reduce((closest, child) => { const box = child.getBoundingClientRect(); const offset = y - box.top - box.height / 2; if (offset < 0 && offset > closest.offset) { return { offset: offset, element: child }; } else { return closest; } }, { offset: Number.NEGATIVE_INFINITY }).element; }
             
             function evaluateExpression(str) { if (!str || str.trim() === '') return 0; let evalStr = str.replace(/[\n\r]/g, ' ').replace(/[^0-9\.\+\-\*\/\(\)\%\s]/g, '').trim(); if (/[+\-*/]$/.test(evalStr)) evalStr = evalStr.slice(0, -1).trim(); if (evalStr === '') return 0; evalStr = evalStr.replace(/(\d*\.?\d+)\s*([+\-])\s*(\d*\.?\d+)\s*%/g, (m, p1, p2, p3) => `${p1} ${p2} (${p1} * ${p3} / 100)`); evalStr = evalStr.replace(/(\d*\.?\d+)\s*%/g, '( $1 / 100 )'); try { return new Function('return ' + evalStr)(); } catch (e) { return 0; } }
             
