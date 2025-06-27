@@ -6,7 +6,7 @@
     
     <!-- 웹 앱 설정을 위한 메타 태그 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="환율 계산기">
     
     <!-- 아이폰 홈 화면 아이콘 (180x180px 권장) -->
@@ -42,11 +42,15 @@
         }
         /* 드래그 앤 드롭 스타일 */
         .draggable-item {
-            cursor: move;
+            user-select: none; /* 터치 시 텍스트 선택 방지 */
+        }
+        .draggable-item.can-drag {
+             cursor: move;
         }
         .dragging {
             opacity: 0.5;
             background: #c7d2fe;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
         .drag-handle {
             color: #9ca3af;
@@ -63,7 +67,12 @@
         <!-- 헤더 -->
         <div class="text-center mb-8 pt-4">
             <h1 class="text-3xl font-bold text-gray-800">양방향 환율 계산기</h1>
-            <p class="text-base text-gray-500 mt-2">유럽 및 발칸 반도 여행자용</p>
+            <!-- 환율 정보 표시 영역 -->
+            <div id="rate-info" class="text-sm text-gray-600 my-3">
+                <p id="usd-to-krw-rate">USD/KRW 환율 로딩 중...</p>
+                <p id="last-updated" class="text-xs text-gray-400 mt-1">최종 업데이트: -</p>
+            </div>
+            <p class="text-base text-gray-500">유럽 및 발칸 반도 여행자용</p>
         </div>
 
         <!-- 로딩 인디케이터 -->
@@ -73,16 +82,13 @@
         
         <!-- 계산기 메인 -->
         <div id="calculator" class="hidden">
-            <div id="currency-list" class="space-y-4">
-                <!-- 통화별 입력 필드가 여기에 동적으로 추가됩니다 -->
+            <!-- KRW 고정 영역 (Sticky) -->
+            <div id="currency-list" class="space-y-4 sticky top-0 z-10 bg-white pb-4">
+                <!-- 고정 통화 (KRW)가 여기에 추가됩니다 -->
             </div>
-            <div id="draggable-currency-list" class="space-y-4 mt-4">
-                 <!-- 드래그 가능한 통화 목록 -->
-            </div>
-
-            <!-- 정보 업데이트 시간 -->
-            <div class="text-center mt-8">
-                <p id="last-updated" class="text-xs text-gray-400">환율 정보 업데이트 중...</p>
+            <!-- 스크롤 및 드래그 가능 영역 -->
+            <div id="draggable-currency-list" class="space-y-4 pt-4 border-t border-gray-200">
+                 <!-- 드래그 가능한 통화 목록이 여기에 추가됩니다 -->
             </div>
         </div>
         
@@ -98,6 +104,7 @@
             const currencyList = document.getElementById('currency-list');
             const draggableCurrencyList = document.getElementById('draggable-currency-list');
             const lastUpdated = document.getElementById('last-updated');
+            const usdToKrwRate = document.getElementById('usd-to-krw-rate');
             const loader = document.getElementById('loader');
             const calculator = document.getElementById('calculator');
             const errorMessage = document.getElementById('error-message');
@@ -131,12 +138,19 @@
 
                     if (data.result === 'success') {
                         exchangeRates = data.rates;
+                        
+                        // 환율 정보 업데이트
+                        const krwRate = exchangeRates['KRW'];
+                        usdToKrwRate.textContent = `1 USD = ${krwRate.toLocaleString('ko-KR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} KRW`;
+                        const updateDate = new Date(data.time_last_update_utc);
+                        lastUpdated.textContent = `최종 업데이트: ${updateDate.toLocaleString('ko-KR')}`;
+
                         buildCalculatorUI();
                         addDragAndDropListeners();
                         showCalculator();
 
                         const krwInput = document.querySelector('input[data-currency-code="KRW"]');
-                        krwInput.value = formatNumber(targetCurrencies.KRW.defaultValue, 'KRW');
+                        krwInput.value = formatNumber(targetCurrencies.KRW.defaultValue);
                         calculateAndDisplay('KRW', targetCurrencies.KRW.defaultValue);
                     } else {
                         showError();
@@ -152,7 +166,7 @@
                 const card = document.createElement('div');
                 const isDraggable = code !== 'KRW';
 
-                card.className = `flex items-center gap-3 p-3 bg-gray-50 rounded-xl border-2 border-transparent transition-all duration-300 ${isDraggable ? 'draggable-item' : ''}`;
+                card.className = `flex items-center gap-3 p-3 bg-gray-50 rounded-xl border-2 border-transparent transition-all duration-300 draggable-item ${isDraggable ? 'can-drag' : ''}`;
                  if(isDraggable) {
                     card.setAttribute('draggable', 'true');
                  }
@@ -189,9 +203,9 @@
                     
                     const card = createCurrencyCard(code);
                     if (code === 'KRW') {
-                        currencyList.appendChild(card); 
+                        currencyList.appendChild(card);
                     } else {
-                        draggableCurrencyList.appendChild(card); 
+                        draggableCurrencyList.appendChild(card);
                     }
                 });
                 
@@ -199,34 +213,56 @@
                     input.addEventListener('input', handleInputChange);
                     input.addEventListener('focus', (e) => e.target.select());
                 });
-
-                lastUpdated.textContent = `마지막 업데이트: ${new Date().toLocaleString('ko-KR')}`;
             }
 
+            // *** 터치 및 마우스 드래그 앤 드롭 기능 추가 ***
             function addDragAndDropListeners() {
-                const draggables = document.querySelectorAll('.draggable-item');
+                let draggingItem = null;
 
-                draggables.forEach(draggable => {
-                    draggable.addEventListener('dragstart', () => {
-                        draggable.classList.add('dragging');
+                draggableCurrencyList.querySelectorAll('.can-drag').forEach(item => {
+                    item.addEventListener('dragstart', () => {
+                        draggingItem = item;
+                        setTimeout(() => item.classList.add('dragging'), 0);
                     });
-                    draggable.addEventListener('dragend', () => {
-                        draggable.classList.remove('dragging');
+                    item.addEventListener('dragend', () => {
+                        if (draggingItem) {
+                           draggingItem.classList.remove('dragging');
+                           draggingItem = null;
+                        }
+                    });
+                    item.addEventListener('touchstart', e => {
+                        draggingItem = e.currentTarget;
+                         setTimeout(() => draggingItem.classList.add('dragging'), 0);
+                    }, { passive: true });
+                    item.addEventListener('touchend', () => {
+                        if (draggingItem) {
+                            draggingItem.classList.remove('dragging');
+                            draggingItem = null;
+                        }
                     });
                 });
 
                 draggableCurrencyList.addEventListener('dragover', e => {
                     e.preventDefault();
+                    if (!draggingItem) return;
                     const afterElement = getDragAfterElement(draggableCurrencyList, e.clientY);
-                    const dragging = document.querySelector('.dragging');
-                    if (dragging) {
-                        if (afterElement == null) {
-                            draggableCurrencyList.appendChild(dragging);
-                        } else {
-                            draggableCurrencyList.insertBefore(dragging, afterElement);
-                        }
-                    }
+                    moveDraggingItem(afterElement);
                 });
+
+                draggableCurrencyList.addEventListener('touchmove', e => {
+                    if (!draggingItem) return;
+                    e.preventDefault();
+                    const afterElement = getDragAfterElement(draggableCurrencyList, e.touches[0].clientY);
+                    moveDraggingItem(afterElement);
+                });
+
+                function moveDraggingItem(afterElement) {
+                    if (afterElement == null) {
+                        draggableCurrencyList.appendChild(draggingItem);
+                    } else {
+                        draggableCurrencyList.insertBefore(draggingItem, afterElement);
+                    }
+                }
             }
 
             function getDragAfterElement(container, y) {
@@ -268,7 +304,7 @@
                     const targetCode = input.dataset.currencyCode;
                     if (input === activeInput) return;
                     const targetValue = usdValue * exchangeRates[targetCode];
-                    input.value = formatNumber(targetValue, targetCode);
+                    input.value = formatNumber(targetValue);
                 });
             }
 
@@ -280,7 +316,7 @@
                 });
             }
             
-            function formatNumber(num, code) {
+            function formatNumber(num) {
                 const decimalPlaces = 2;
                 return num.toLocaleString('en-US', {
                     minimumFractionDigits: decimalPlaces,
